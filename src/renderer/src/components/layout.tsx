@@ -1,4 +1,5 @@
 import React from 'react'
+import { Outlet } from 'react-router-dom'
 import { AppSidebar } from '@/components/app-sidebar'
 import {
   Breadcrumb,
@@ -58,7 +59,7 @@ function SidebarToggle(): React.ReactNode {
   )
 }
 
-export default function Layout({ children }: { children: React.ReactNode }): React.ReactNode {
+export default function Layout(): React.ReactNode {
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -66,7 +67,9 @@ export default function Layout({ children }: { children: React.ReactNode }): Rea
       <SidebarInset className="h-svh">
         <Header />
         <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-0">
-          <main className="flex flex-col gap-4">{children}</main>
+          <main className="flex flex-col gap-4">
+            <Outlet />
+          </main>
         </div>
       </SidebarInset>
     </SidebarProvider>

@@ -1,44 +1,34 @@
 import React from 'react'
-import Versions from './components/Versions'
-import electronLogo from './assets/electron.svg'
-import { Button } from '@/components/ui/button'
+import { Routes, Route } from 'react-router-dom'
 import Layout from '@/components/layout'
+import HomePage from '@/pages/home'
+import PlaceholderPage from '@/pages/page'
 
 function App(): React.JSX.Element {
-  const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
-
   return (
-    <Layout>
-      <img alt="logo" className="logo" src={electronLogo} />
-      <div className="creator">Powered by electron-vite</div>
-      <div className="text">
-        Build an Electron app with <span className="react">React</span>
-        &nbsp;and <span className="ts">TypeScript</span>
-      </div>
-      <p className="tip">
-        Please try pressing <code>F12</code> to open the devTool
-      </p>
-      <div className="actions">
-        <div className="action">
-          <a href="https://electron-vite.org/" target="_blank" rel="noreferrer">
-            Documentation
-          </a>
-        </div>
-        <div className="action">
-          <a target="_blank" rel="noreferrer" onClick={ipcHandle}>
-            Send IPC
-          </a>
-        </div>
-      </div>
-      <div>
-        <Button>Click me</Button>
-        <Button variant="outline">Outline</Button>
-        <Button variant="ghost" size="sm">
-          Ghost
-        </Button>
-      </div>
-      <Versions></Versions>
-    </Layout>
+    <Routes>
+      <Route element={<Layout />}>
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/playground/history" element={<PlaceholderPage title="History" />} />
+        <Route path="/playground/starred" element={<PlaceholderPage title="Starred" />} />
+        <Route path="/playground/settings" element={<PlaceholderPage title="Settings" />} />
+        <Route path="/models/genesis" element={<PlaceholderPage title="Genesis" />} />
+        <Route path="/models/explorer" element={<PlaceholderPage title="Explorer" />} />
+        <Route path="/models/quantum" element={<PlaceholderPage title="Quantum" />} />
+        <Route path="/docs/introduction" element={<PlaceholderPage title="Introduction" />} />
+        <Route path="/docs/get-started" element={<PlaceholderPage title="Get Started" />} />
+        <Route path="/docs/tutorials" element={<PlaceholderPage title="Tutorials" />} />
+        <Route path="/docs/changelog" element={<PlaceholderPage title="Changelog" />} />
+        <Route path="/settings/general" element={<PlaceholderPage title="General" />} />
+        <Route path="/settings/team" element={<PlaceholderPage title="Team" />} />
+        <Route path="/settings/billing" element={<PlaceholderPage title="Billing" />} />
+        <Route path="/settings/limits" element={<PlaceholderPage title="Limits" />} />
+        <Route path="/projects/design-engineering" element={<PlaceholderPage title="Design Engineering" />} />
+        <Route path="/projects/sales-marketing" element={<PlaceholderPage title="Sales & Marketing" />} />
+        <Route path="/projects/travel" element={<PlaceholderPage title="Travel" />} />
+        <Route path="*" element={<HomePage />} />
+      </Route>
+    </Routes>
   )
 }
 

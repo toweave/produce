@@ -14,7 +14,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
 
 // This is sample data.
 const data = {
@@ -51,123 +51,130 @@ const data = {
   ],
   navMain: [
     {
-      title: "Playground",
-      url: "#",
+      title: "首页",
+      url: "/home",
+      icon: (
+        <HomeIcon
+        />
+      ),
+    },
+    {
+      title: "实验室",
+      url: "/playground",
       icon: (
         <TerminalSquareIcon
         />
       ),
-      isActive: true,
       items: [
         {
-          title: "History",
-          url: "#",
+          title: "历史记录",
+          url: "/playground/history",
         },
         {
-          title: "Starred",
-          url: "#",
+          title: "星标",
+          url: "/playground/starred",
         },
         {
-          title: "Settings",
-          url: "#",
+          title: "设置",
+          url: "/playground/settings",
         },
       ],
     },
     {
-      title: "Models",
-      url: "#",
+      title: "模型",
+      url: "/models",
       icon: (
         <BotIcon
         />
       ),
       items: [
         {
-          title: "Genesis",
-          url: "#",
+          title: "创世纪",
+          url: "/models/genesis",
         },
         {
-          title: "Explorer",
-          url: "#",
+          title: "探索者",
+          url: "/models/explorer",
         },
         {
-          title: "Quantum",
-          url: "#",
+          title: "量子",
+          url: "/models/quantum",
         },
       ],
     },
     {
-      title: "Documentation",
-      url: "#",
+      title: "文档",
+      url: "/docs",
       icon: (
         <BookOpenIcon
         />
       ),
       items: [
         {
-          title: "Introduction",
-          url: "#",
+          title: "简介",
+          url: "/docs/introduction",
         },
         {
-          title: "Get Started",
-          url: "#",
+          title: "快速开始",
+          url: "/docs/get-started",
         },
         {
-          title: "Tutorials",
-          url: "#",
+          title: "教程",
+          url: "/docs/tutorials",
         },
         {
-          title: "Changelog",
-          url: "#",
+          title: "更新日志",
+          url: "/docs/changelog",
         },
       ],
     },
     {
-      title: "Settings",
-      url: "#",
+      title: "设置",
+      url: "/settings",
       icon: (
         <Settings2Icon
         />
       ),
       items: [
         {
-          title: "General",
-          url: "#",
+          title: "通用",
+          url: "/settings/general",
         },
         {
-          title: "Team",
-          url: "#",
+          title: "团队",
+          url: "/settings/team",
         },
         {
-          title: "Billing",
-          url: "#",
+          title: "账单",
+          url: "/settings/billing",
         },
         {
-          title: "Limits",
-          url: "#",
+          title: "限额",
+          url: "/settings/limits",
         },
       ],
     },
   ],
   projects: [
     {
-      name: "Design Engineering",
-      url: "#",
+      name: "设计工程",
+      url: "/projects/design-engineering",
       icon: (
         <FrameIcon
         />
       ),
     },
     {
-      name: "Sales & Marketing",
-      url: "#",
+      name: "销售与市场",
+      url: "/projects/sales-marketing",
       icon: (
         <PieChartIcon
         />
       ),
     },
     {
-      name: "Travel",
-      url: "#",
+      name: "旅行",
+      url: "/projects/travel",
       icon: (
         <MapIcon
         />
