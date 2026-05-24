@@ -14,7 +14,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, VideoIcon } from "lucide-react"
 
 // This is sample data.
 const data = {
@@ -151,6 +151,24 @@ const data = {
         {
           title: "限额",
           url: "/settings/limits",
+        },
+      ],
+    },
+    {
+      title: "Seedance-1.5",
+      url: "/seedance",
+      icon: (
+        <VideoIcon
+        />
+      ),
+      items: [
+        {
+          title: "视频创作",
+          url: "/seedance/create",
+        },
+        {
+          title: "任务列表",
+          url: "/seedance/tasks",
         },
       ],
     },
