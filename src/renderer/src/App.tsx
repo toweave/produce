@@ -1,3 +1,4 @@
+import React from 'react'
 import Versions from './components/Versions'
 import electronLogo from './assets/electron.svg'
 
