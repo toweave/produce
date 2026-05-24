@@ -19,7 +19,7 @@ function Header(): React.ReactNode {
   return (
     <header
       data-sidebar-state={state}
-      className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
+      className="flex h-12 shrink-0 items-center gap-2 border-b border-border transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
     >
       <div className="flex items-center gap-2 px-4">
         <SidebarToggle />
