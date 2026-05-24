@@ -7,7 +7,42 @@ import icon from '../../resources/icon.png?asset'
 import { initDatabase, insertLog, queryLogs } from './database'
 
 const ARK_API_BASE = 'https://ark.cn-beijing.volces.com/api/v3'
-const ARK_API_KEY = process.env['VITE_SEE_DANCE_API_KEY'] || ''
+
+const SETTINGS_PATH = join(app.getPath('userData'), 'settings.json')
+
+const DEFAULT_SETTINGS = {
+  seedance15Key: process.env['VITE_SEE_DANCE_15_KEY'] || process.env['VITE_SEE_DANCE_API_KEY'] || '',
+  seedance20Key: process.env['VITE_SEE_DANCE_20_KEY'] || process.env['VITE_SEE_DANCE_API_KEY'] || '',
+  userInfo: { name: '用户', email: 'user@example.com' },
+  theme: 'system'
+}
+
+type Settings = typeof DEFAULT_SETTINGS
+
+let cachedSettings: Settings = { ...DEFAULT_SETTINGS }
+
+async function loadSettings(): Promise<Settings> {
+  try {
+    const data = await readFile(SETTINGS_PATH, 'utf-8')
+    const parsed = JSON.parse(data)
+    cachedSettings = { ...DEFAULT_SETTINGS, ...parsed }
+  } catch {
+    // No settings file yet, use defaults + env
+    cachedSettings = { ...DEFAULT_SETTINGS }
+  }
+  return cachedSettings
+}
+
+async function saveSettings(partial: Partial<Settings>): Promise<Settings> {
+  cachedSettings = { ...cachedSettings, ...partial }
+  await writeFile(SETTINGS_PATH, JSON.stringify(cachedSettings, null, 2), 'utf-8')
+  return cachedSettings
+}
+
+function getApiKey(version: '1.5' | '2.0'): string {
+  if (version === '1.5') return cachedSettings.seedance15Key
+  return cachedSettings.seedance20Key
+}
 
 const MIME_MAP: Record<string, string> = {
   png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
@@ -32,13 +67,13 @@ function extractContentInfo(params: Record<string, unknown>): { prompt: string; 
   return { prompt, imageCount, videoCount, audioCount }
 }
 
-async function arkFetch(path: string, options: RequestInit = {}): Promise<unknown> {
+async function arkFetch(path: string, apiKey: string, options: RequestInit = {}): Promise<unknown> {
   const url = `${ARK_API_BASE}${path}`
   const res = await fetch(url, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${ARK_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
       ...options.headers
     }
   })
@@ -103,14 +138,27 @@ app.whenReady().then(() => {
   // Initialize database for operation logging
   initDatabase()
 
-  // --- Seedance IPC handlers ---
+  // Load user settings from disk
+  loadSettings()
+
+  // --- Settings IPC handlers ---
+  ipcMain.handle('settings:get', async () => {
+    return cachedSettings
+  })
+
+  ipcMain.handle('settings:set', async (_event, partial: Partial<Settings>) => {
+    return saveSettings(partial)
+  })
+
+  // --- Seedance 1.5 IPC handlers ---
   ipcMain.handle('seedance:create-task', async (_event, params) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('1.5')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
     }
     const info = extractContentInfo(params as Record<string, unknown>)
     try {
-      const result = await arkFetch('/contents/generations/tasks', {
+      const result = await arkFetch('/contents/generations/tasks', apiKey, {
         method: 'POST',
         body: JSON.stringify(params)
       })
@@ -123,11 +171,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('seedance:get-task', async (_event, id: string) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('1.5')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
     }
     try {
-      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`)
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey)
       insertLog({ version: '1.5', task_id: id, operation: 'get', model: (result as Record<string, unknown>)?.model as string || '', prompt: null, status: (result as Record<string, unknown>)?.status as string || null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
       return result
     } catch (err) {
@@ -137,11 +186,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('seedance:list-tasks', async (_event, query: string) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('1.5')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
     }
     try {
-      const result = await arkFetch(`/contents/generations/tasks${query}`)
+      const result = await arkFetch(`/contents/generations/tasks${query}`, apiKey)
       insertLog({ version: '1.5', task_id: null, operation: 'list', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: query, result: JSON.stringify(result), error: null })
       return result
     } catch (err) {
@@ -151,11 +201,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('seedance:delete-task', async (_event, id: string) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('1.5')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
     }
     try {
-      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, {
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey, {
         method: 'DELETE'
       })
       insertLog({ version: '1.5', task_id: id, operation: 'delete', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
@@ -252,12 +303,13 @@ app.whenReady().then(() => {
 
   // --- Seedance 2.0 IPC handlers ---
   ipcMain.handle('seedance2:create-task', async (_event, params) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('2.0')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
     }
     const info = extractContentInfo(params as Record<string, unknown>)
     try {
-      const result = await arkFetch('/contents/generations/tasks', {
+      const result = await arkFetch('/contents/generations/tasks', apiKey, {
         method: 'POST',
         body: JSON.stringify(params)
       })
@@ -270,11 +322,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('seedance2:get-task', async (_event, id: string) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('2.0')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
     }
     try {
-      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`)
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey)
       insertLog({ version: '2.0', task_id: id, operation: 'get', model: (result as Record<string, unknown>)?.model as string || '', prompt: null, status: (result as Record<string, unknown>)?.status as string || null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
       return result
     } catch (err) {
@@ -284,11 +337,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('seedance2:list-tasks', async (_event, query: string) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('2.0')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
     }
     try {
-      const result = await arkFetch(`/contents/generations/tasks${query}`)
+      const result = await arkFetch(`/contents/generations/tasks${query}`, apiKey)
       insertLog({ version: '2.0', task_id: null, operation: 'list', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: query, result: JSON.stringify(result), error: null })
       return result
     } catch (err) {
@@ -298,11 +352,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('seedance2:delete-task', async (_event, id: string) => {
-    if (!ARK_API_KEY) {
-      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    const apiKey = getApiKey('2.0')
+    if (!apiKey) {
+      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
     }
     try {
-      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, {
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey, {
         method: 'DELETE'
       })
       insertLog({ version: '2.0', task_id: id, operation: 'delete', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })

@@ -54,6 +54,18 @@ interface LogsAPI {
   query: (options: LogQueryOptions) => Promise<LogQueryResult>
 }
 
+interface SettingsData {
+  seedance15Key: string
+  seedance20Key: string
+  userInfo: { name: string; email: string }
+  theme: string
+}
+
+interface SettingsAPI {
+  get: () => Promise<SettingsData>
+  set: (partial: Partial<SettingsData>) => Promise<SettingsData>
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -63,6 +75,7 @@ declare global {
       dialog: DialogAPI
       file: FileAPI
       logs: LogsAPI
+      settings: SettingsAPI
     }
   }
 }

@@ -29,6 +29,10 @@ const api = {
   },
   logs: {
     query: (options) => ipcRenderer.invoke('logs:query', options)
+  },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (partial) => ipcRenderer.invoke('settings:set', partial)
   }
 }
 
