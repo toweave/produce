@@ -38,7 +38,6 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
-  compression: ultra
 linux:
   target:
     - AppImage
