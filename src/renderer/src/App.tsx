@@ -2,13 +2,13 @@ import React from 'react'
 import Versions from './components/Versions'
 import electronLogo from './assets/electron.svg'
 import { Button } from '@/components/ui/button'
-
+import Layout from '@/components/layout'
 
 function App(): React.JSX.Element {
   const ipcHandle = (): void => window.electron.ipcRenderer.send('ping')
 
   return (
-    <>
+    <Layout>
       <img alt="logo" className="logo" src={electronLogo} />
       <div className="creator">Powered by electron-vite</div>
       <div className="text">
@@ -38,7 +38,7 @@ function App(): React.JSX.Element {
         </Button>
       </div>
       <Versions></Versions>
-    </>
+    </Layout>
   )
 }
 
