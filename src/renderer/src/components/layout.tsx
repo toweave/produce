@@ -13,13 +13,13 @@ import { Button } from '@/components/ui/button'
 import { SidebarInset, SidebarProvider, useSidebar } from '@/components/ui/sidebar'
 import { PanelLeftCloseIcon, PanelLeftOpenIcon } from 'lucide-react'
 
-function Header() {
+function Header(): React.ReactNode {
   const { state } = useSidebar()
 
   return (
     <header
       data-sidebar-state={state}
-      className="flex h-16 shrink-0 items-center gap-2 transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
+      className="flex h-12 shrink-0 items-center gap-2 transition-[width,height] duration-200 ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12"
     >
       <div className="flex items-center gap-2 px-4">
         <SidebarToggle />
@@ -40,7 +40,7 @@ function Header() {
   )
 }
 
-function SidebarToggle() {
+function SidebarToggle(): React.ReactNode {
   const { state, toggleSidebar } = useSidebar()
 
   return (
@@ -63,10 +63,10 @@ export default function Layout({ children }: { children: React.ReactNode }): Rea
     <SidebarProvider>
       <AppSidebar />
 
-      <SidebarInset>
+      <SidebarInset className="h-svh">
         <Header />
-        <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-          <main>{children}</main>
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-0">
+          <main className="flex flex-col gap-4">{children}</main>
         </div>
       </SidebarInset>
     </SidebarProvider>
