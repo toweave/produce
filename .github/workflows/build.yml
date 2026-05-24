@@ -36,7 +36,7 @@ jobs:
             artifact-name: produce-windows
           - os: macos-latest
             target: mac
-            pkg-args: --mac --dmg
+            pkg-args: --mac dmg
             artifact-name: produce-macos
 
     runs-on: ${{ matrix.os }}
