@@ -37,8 +37,12 @@ function captureFrameToDataUrl(video: HTMLVideoElement, canvas: HTMLCanvasElemen
   canvas.height = video.videoHeight
   const ctx = canvas.getContext('2d')
   if (!ctx) return ''
-  ctx.drawImage(video, 0, 0)
-  return canvas.toDataURL('image/png')
+  try {
+    ctx.drawImage(video, 0, 0)
+    return canvas.toDataURL('image/png')
+  } catch {
+    return ''
+  }
 }
 
 export default function SeedanceCreatePage(): React.JSX.Element {
@@ -70,7 +74,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Player state
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const justCreated = useRef(false)
+  const blobUrlRef = useRef<string | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [isHovering, setIsHovering] = useState(false)
   const [capturingAuto, setCapturingAuto] = useState(false)
@@ -80,6 +87,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   const [manualKeyframes, setManualKeyframes] = useState<string[]>([])
 
   // Init storage location
+  useEffect(() => {
+    // Cleanup blob URL on unmount
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    }
+  }, [])
+
   useEffect(() => {
     const initStorage = async (): Promise<void> => {
       try {
@@ -107,21 +121,53 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     const restoreSession = async (): Promise<void> => {
       try {
         const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
-        if (!raw) return
-        const session = JSON.parse(raw)
-        if (!session.taskId || !session.videoUrl) return
+        let taskId: string | null = null
+        let remoteUrl = ''
 
-        setCreatedId(session.taskId)
-        setVideoUrl(session.videoUrl)
+        if (raw) {
+          const session = JSON.parse(raw)
+          taskId = session.taskId || null
+          // Support both new (remoteUrl) and old (videoUrl) session keys
+          remoteUrl = session.remoteUrl || session.videoUrl || ''
+
+          // Try to use local video file first (fast, no CORS)
+          if (session.localPath) {
+            try {
+              const buffer = await window.api.file.readFileBuffer(session.localPath)
+              const blob = new Blob([buffer], { type: 'video/mp4' })
+              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+              blobUrlRef.current = URL.createObjectURL(blob)
+              setVideoUrl(blobUrlRef.current)
+              remoteUrl = '' // Local path succeeded, skip remote fallback
+            } catch {
+              // Local file unavailable, fall through to remote URL
+            }
+          }
+        }
+
+        // No saved session or local file failed → try default task
+        if (!taskId) {
+          taskId = 'cgt-20260524203622-l66fm'
+          try {
+            const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
+            const content = result.content as Record<string, unknown> | undefined
+            remoteUrl = String(content?.video_url || '')
+          } catch {
+            // Default task unavailable, page stays empty
+            taskId = null
+          }
+        }
+
+        if (taskId) setCreatedId(taskId)
+        if (remoteUrl && !blobUrlRef.current) setVideoUrl(remoteUrl)
 
         // Read saved keyframes from disk
-        const result = await window.api.file.readKeyframes({
-          dir: session.dir || currentDir,
-          taskId: session.taskId
-        })
-        const autoFrames = result.autoFrames.filter(Boolean) as string[]
-        if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
-        if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
+        if (taskId) {
+          const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
+          const autoFrames = result.autoFrames.filter(Boolean) as string[]
+          if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
+          if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
+        }
       } catch {
         // Session data stale, ignore
       }
@@ -185,20 +231,35 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
         if (status === 'succeeded') {
           stopped = true
+          justCreated.current = true
           const content = result.content as Record<string, unknown> | undefined
-          const url = String(content?.video_url || '')
-          setVideoUrl(url)
-          // Download video to local storage
+          const remoteUrl = String(content?.video_url || '')
+
+          // Download video to local storage, then serve from local blob URL
           try {
             const timestamp = Date.now()
+            const filename = `Seedance_${taskId}_${timestamp}`
             const localPath = await window.api.file.downloadVideo({
-              url,
+              url: remoteUrl,
               destDir: currentDir,
-              filename: `Seedance_${taskId}_${timestamp}`
+              filename
             })
-            console.log('视频已保存到:', localPath)
+            const buffer = await window.api.file.readFileBuffer(localPath)
+            const blob = new Blob([buffer], { type: 'video/mp4' })
+            if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = URL.createObjectURL(blob)
+            setVideoUrl(blobUrlRef.current)
+
+            // Save session for next visit (with local path for instant restore)
+            localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify({
+              taskId,
+              remoteUrl,
+              localPath,
+              dir: currentDir
+            }))
           } catch (e) {
-            console.error('视频保存失败:', e)
+            console.error('视频下载或本地加载失败，使用远程URL:', e)
+            setVideoUrl(remoteUrl)
           }
         } else if (status === 'failed') {
           stopped = true
@@ -231,6 +292,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     setManualKeyframes([])
     setCurrentTime(0)
     setIsPlaying(false)
+    setHasInteracted(false)
 
     try {
       const content: { type: string; text?: string; image_url?: { url: string }; role?: string }[] = [
@@ -268,6 +330,8 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Auto-capture keyframes when video loads
   useEffect(() => {
     if (!videoUrl || !videoRef.current) return
+    if (!justCreated.current) return
+    justCreated.current = false
     const video = videoRef.current
 
     const doAutoCapture = async (): Promise<void> => {
@@ -319,14 +383,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
       setAutoKeyframes(frames)
       setCapturingAuto(false)
-      // Save session for next visit
-      localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify({
-        taskId: createdId,
-        videoUrl,
-        autoCount: frames.length,
-        manualCount: 0,
-        dir: currentDir
-      }))
       // Seek back to start
       video.currentTime = 0
     }
@@ -389,24 +445,33 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     const video = videoRef.current
     if (!video) return
     if (video.paused) {
-      video.play()
-      setIsPlaying(true)
+      video.play().catch(() => {
+        setIsPlaying(false)
+      })
     } else {
       video.pause()
-      setIsPlaying(false)
     }
+    if (!hasInteracted) setHasInteracted(true)
   }
 
-  const handleTimeUpdate = (): void => {
+  const handleVideoTimeUpdate = (): void => {
     const video = videoRef.current
     if (video) setCurrentTime(video.currentTime)
   }
 
-  const handleVideoPause = (): void => setIsPlaying(false)
+  const handleVideoPause = (): void => {
+    setIsPlaying(false)
+    if (!hasInteracted) setHasInteracted(true)
+  }
+
   const handleVideoPlay = (): void => setIsPlaying(true)
 
-  // Determine keyframe button visibility
-  const showKeyframeBtn = isHovering || (!isPlaying && !!videoUrl)
+  // Determine keyframe button visibility:
+  // - Always show on hover
+  // - Always show when user has explicitly paused the video
+  // - Hide during playback unless hovering
+  // - Don't show on initial load (before any play/pause interaction)
+  const showKeyframeBtn = isHovering || (hasInteracted && !isPlaying && !!videoUrl)
 
   return (
     <div className="flex w-full h-full gap-6">
@@ -645,7 +710,9 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 <>
                   <Loader2Icon className="h-8 w-8 animate-spin" />
                   <span className="text-sm">
-                    任务正在{taskStatus === 'queued' ? '排队' : '生成'}中...
+                    {taskStatus === 'succeeded'
+                      ? '任务已完成，正在下载视频...'
+                      : `任务正在${taskStatus === 'queued' ? '排队' : '生成'}中...`}
                   </span>
                   <span className="text-xs font-mono">ID: {createdId}</span>
                   <span className="text-xs text-muted-foreground">
@@ -708,11 +775,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 src={videoUrl}
                 className="max-w-full max-h-full cursor-pointer"
                 onClick={handlePlayPause}
-                onTimeUpdate={handleTimeUpdate}
+                onTimeUpdate={handleVideoTimeUpdate}
                 onPause={handleVideoPause}
                 onPlay={handleVideoPlay}
                 controls={false}
-                crossOrigin="anonymous"
               />
 
               {/* Play/Pause overlay button */}

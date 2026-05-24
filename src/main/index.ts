@@ -221,6 +221,11 @@ app.whenReady().then(() => {
     return destPath
   })
 
+  ipcMain.handle('file:read-file-buffer', async (_event, filePath: string) => {
+    const buffer = await readFile(filePath)
+    return buffer
+  })
+
   ipcMain.handle('file:read-keyframes', async (_event, { dir, taskId }: { dir: string; taskId: string }) => {
     const autoFrames: (string | null)[] = []
     for (let i = 0; i < 6; i++) {

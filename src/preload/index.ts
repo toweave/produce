@@ -24,6 +24,7 @@ const api = {
     getDefaultPath: () => ipcRenderer.invoke('file:get-default-path'),
     downloadVideo: (opts) => ipcRenderer.invoke('file:download-video', opts),
     saveKeyframe: (opts) => ipcRenderer.invoke('file:save-keyframe', opts),
+    readFileBuffer: (filePath) => ipcRenderer.invoke('file:read-file-buffer', filePath),
     readKeyframes: (opts) => ipcRenderer.invoke('file:read-keyframes', opts)
   },
   logs: {
