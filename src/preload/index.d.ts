@@ -9,10 +9,15 @@ interface SeedanceAPI {
 
 interface DialogAPI {
   openFile: (filters?: Electron.FileFilter[]) => Promise<string | null>
+  selectDirectory: () => Promise<string | null>
 }
 
 interface FileAPI {
   readBase64: (filePath: string) => Promise<string>
+  getDefaultPath: () => Promise<string>
+  downloadVideo: (opts: { url: string; destDir: string; filename: string }) => Promise<string>
+  saveKeyframe: (opts: { base64Data: string; destDir: string; filename: string }) => Promise<string>
+  readKeyframes: (opts: { dir: string; taskId: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
 }
 
 interface LogEntry {

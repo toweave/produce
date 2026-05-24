@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { readFile } from 'fs/promises'
+import { readFile, writeFile, mkdir } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { initDatabase, insertLog, queryLogs } from './database'
@@ -182,6 +182,67 @@ app.whenReady().then(() => {
     const ext = filePath.split('.').pop()?.toLowerCase() || ''
     const mime = MIME_MAP[ext] || `image/${ext}`
     return `data:${mime};base64,${buffer.toString('base64')}`
+  })
+
+  // --- File/Storage IPC handlers ---
+  ipcMain.handle('dialog:select-directory', async () => {
+    const win = BrowserWindow.getFocusedWindow()
+    if (!win) return null
+    const result = await dialog.showOpenDialog(win, {
+      properties: ['openDirectory']
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('file:get-default-path', async () => {
+    return app.getPath('downloads')
+  })
+
+  ipcMain.handle('file:download-video', async (_event, { url, destDir, filename }: { url: string; destDir: string; filename: string }) => {
+    await mkdir(destDir, { recursive: true })
+    const ext = '.mp4'
+    const destPath = join(destDir, `${filename}${ext}`)
+    const response = await fetch(url)
+    if (!response.ok) throw new Error(`下载视频失败: ${response.status}`)
+    const buffer = Buffer.from(await response.arrayBuffer())
+    await writeFile(destPath, buffer)
+    return destPath
+  })
+
+  ipcMain.handle('file:save-keyframe', async (_event, { base64Data, destDir, filename }: { base64Data: string; destDir: string; filename: string }) => {
+    await mkdir(destDir, { recursive: true })
+    const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
+    if (!matches) throw new Error('无效的 Base64 图片数据')
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
+    const destPath = join(destDir, `${filename}.${ext}`)
+    const buffer = Buffer.from(matches[2], 'base64')
+    await writeFile(destPath, buffer)
+    return destPath
+  })
+
+  ipcMain.handle('file:read-keyframes', async (_event, { dir, taskId }: { dir: string; taskId: string }) => {
+    const autoFrames: (string | null)[] = []
+    for (let i = 0; i < 6; i++) {
+      const path = join(dir, `Seedance_${taskId}_keyframe_${i}.png`)
+      try {
+        const buffer = await readFile(path)
+        autoFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
+      } catch {
+        autoFrames.push(null)
+      }
+    }
+    const manualFrames: string[] = []
+    for (let i = 0; ; i++) {
+      const path = join(dir, `Seedance_${taskId}_manual_${i}.png`)
+      try {
+        const buffer = await readFile(path)
+        manualFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
+      } catch {
+        break
+      }
+    }
+    return { autoFrames, manualFrames }
   })
 
   // --- Seedance 2.0 IPC handlers ---
