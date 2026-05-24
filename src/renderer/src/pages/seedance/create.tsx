@@ -8,6 +8,7 @@ type Resolution = '480p' | '720p' | '1080p'
 const STORAGE_DIRS_KEY = 'seedance-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance-storage-current'
 const STORAGE_LAST_SESSION_KEY = 'seedance-last-session'
+const FORM_PARAMS_KEY = 'seedance-form-params'
 
 function formatTimecode(seconds: number, fps = 24): string {
   const h = Math.floor(seconds / 3600)
@@ -51,7 +52,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Form state
   const [prompt, setPrompt] = useState('')
   const [imageData, setImageData] = useState<string | null>(null)
-  const [useLastFrame, setUseLastFrame] = useState(false)
+  const [useLastFrame, setUseLastFrame] = useState(true)
   const [lastFrameData, setLastFrameData] = useState<string | null>(null)
   const [ratio, setRatio] = useState<Ratio>('16:9')
   const [duration, setDuration] = useState(-1)
@@ -94,6 +95,47 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     }
   }, [])
+
+  // Restore form parameters from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FORM_PARAMS_KEY)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        if (saved.prompt) setPrompt(saved.prompt)
+        if (saved.ratio) setRatio(saved.ratio as Ratio)
+        if (saved.duration !== undefined) setDuration(saved.duration)
+        if (saved.resolution) setResolution(saved.resolution as Resolution)
+        if (saved.generateAudio !== undefined) setGenerateAudio(saved.generateAudio)
+        if (saved.watermark !== undefined) setWatermark(saved.watermark)
+        if (saved.imageData) setImageData(saved.imageData)
+        if (saved.lastFrameData) setLastFrameData(saved.lastFrameData)
+        if (saved.useLastFrame !== undefined) setUseLastFrame(saved.useLastFrame)
+      }
+    } catch {
+      // Ignore corrupted data
+    }
+  }, [])
+
+  // Save form parameters on change (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const data = { prompt, ratio, duration, resolution, generateAudio, watermark, useLastFrame }
+        // Only save image data if not too large
+        if (imageData && imageData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).imageData = imageData
+        if (lastFrameData && lastFrameData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).lastFrameData = lastFrameData
+        localStorage.setItem(FORM_PARAMS_KEY, JSON.stringify(data))
+      } catch {
+        // localStorage full, ignore
+      }
+    }, 500)
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [prompt, ratio, duration, resolution, generateAudio, watermark, imageData, lastFrameData, useLastFrame])
 
   useEffect(() => {
     const initStorage = async (): Promise<void> => {
@@ -478,6 +520,45 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     }
   }, [manualKeyframes, currentDir, createdId])
 
+  // Delete a single manual keyframe
+  const handleDeleteManualKeyframe = useCallback(async (index: number): Promise<void> => {
+    if (!window.confirm('确定删除此关键帧？')) return
+    try {
+      await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_manual_${index}.png`)
+      for (let i = index + 1; i < manualKeyframes.length; i++) {
+        const oldFilename = `Seedance_${createdId}_manual_${i}`
+        const newFilename = `Seedance_${createdId}_manual_${i - 1}`
+        await window.api.file.saveKeyframe({
+          base64Data: manualKeyframes[i],
+          destDir: currentDir,
+          filename: newFilename
+        })
+        await window.api.file.deleteFile(`${currentDir}/${oldFilename}.png`)
+      }
+      setManualKeyframes((prev) => prev.filter((_, i) => i !== index))
+    } catch (e) {
+      console.error('删除关键帧失败:', e)
+    }
+  }, [manualKeyframes, currentDir, createdId])
+
+  // Clear all keyframes
+  const handleClearAllKeyframes = useCallback(async (): Promise<void> => {
+    if (!window.confirm('确定清空所有关键帧？此操作不可撤销')) return
+    try {
+      for (let i = 0; i < autoKeyframes.length; i++) {
+        await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_keyframe_${i}.png`).catch(() => {})
+      }
+      for (let i = 0; i < manualKeyframes.length; i++) {
+        await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_manual_${i}.png`).catch(() => {})
+      }
+    } catch {
+      // Ignore file deletion errors
+    }
+    setAutoKeyframes([])
+    setManualKeyframes([])
+  }, [autoKeyframes, manualKeyframes, currentDir, createdId])
+
+
   // Keyboard controls (frame stepping when paused)
   useEffect(() => {
     const handler = (e: KeyboardEvent): void => {
@@ -725,7 +806,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <>
@@ -742,7 +823,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           {createdId && (
             <button
               onClick={() => navigate(`/seedance/tasks/${createdId}`)}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
             >
               查看详情
             </button>
@@ -891,6 +972,28 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                         <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
                           {i === 0 ? '开头' : i === 5 ? '结尾' : `${Math.round((i / 5) * 100)}%`}
                         </span>
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setImageData(dataUrl)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为首帧"
+                          >
+                            首帧
+                          </button>
+                          <button
+                            onClick={() => {
+                              setLastFrameData(dataUrl)
+                              setUseLastFrame(true)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为尾帧"
+                          >
+                            尾帧
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -899,7 +1002,15 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
               {manualKeyframes.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">手动截图</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-muted-foreground">手动截图</p>
+                    <button
+                      onClick={handleClearAllKeyframes}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      清空全部
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {manualKeyframes.map((dataUrl, i) => (
                       <div key={`manual-${i}`} className="relative group">
@@ -908,6 +1019,35 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                           alt={`手动截图 ${i}`}
                           className="w-full rounded border border-border object-cover aspect-video"
                         />
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setImageData(dataUrl)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为首帧"
+                          >
+                            首帧
+                          </button>
+                          <button
+                            onClick={() => {
+                              setLastFrameData(dataUrl)
+                              setUseLastFrame(true)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为尾帧"
+                          >
+                            尾帧
+                          </button>
+                          <button
+                            onClick={() => handleDeleteManualKeyframe(i)}
+                            className="rounded bg-red-500/90 px-2 py-1 text-[10px] font-medium text-white hover:bg-red-600 transition-colors"
+                            title="删除"
+                          >
+                            删除
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

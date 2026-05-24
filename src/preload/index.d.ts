@@ -19,6 +19,7 @@ interface FileAPI {
   saveKeyframe: (opts: { base64Data: string; destDir: string; filename: string }) => Promise<string>
   readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
   readKeyframes: (opts: { dir: string; taskId: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
+  deleteFile: (filePath: string) => Promise<void>
 }
 
 interface LogEntry {

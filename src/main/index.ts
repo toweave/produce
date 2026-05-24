@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir, unlink } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { initDatabase, insertLog, queryLogs } from './database'
@@ -270,6 +270,10 @@ app.whenReady().then(() => {
     const buffer = Buffer.from(matches[2], 'base64')
     await writeFile(destPath, buffer)
     return destPath
+  })
+
+  ipcMain.handle('file:delete-file', async (_event, filePath: string) => {
+    await unlink(filePath)
   })
 
   ipcMain.handle('file:read-file-buffer', async (_event, filePath: string) => {
