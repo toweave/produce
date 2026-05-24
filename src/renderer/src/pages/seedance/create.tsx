@@ -85,6 +85,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Keyframes state
   const [autoKeyframes, setAutoKeyframes] = useState<string[]>([])
   const [manualKeyframes, setManualKeyframes] = useState<string[]>([])
+  const [captureFlash, setCaptureFlash] = useState(false)
 
   // Init storage location
   useEffect(() => {
@@ -115,61 +116,113 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     initStorage()
   }, [])
 
-  // Restore last session (video + keyframes) from localStorage
+  // Restore last session: always query API for latest completed task, fall back to localStorage
   useEffect(() => {
     if (!currentDir) return
     const restoreSession = async (): Promise<void> => {
       try {
-        const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+        // Step 1: Always query API for the latest completed task
         let taskId: string | null = null
         let remoteUrl = ''
+        let apiFailed = false
 
-        if (raw) {
-          const session = JSON.parse(raw)
-          taskId = session.taskId || null
-          // Support both new (remoteUrl) and old (videoUrl) session keys
-          remoteUrl = session.remoteUrl || session.videoUrl || ''
+        try {
+          const listResult = await window.api.seedance.listTasks('?page_num=1&page_size=1&filter.status=succeeded') as { items?: { id: string }[] }
+          const latestTask = listResult?.items?.[0]
+          if (latestTask?.id) {
+            taskId = latestTask.id
+            const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
+            const content = result.content as Record<string, unknown> | undefined
+            remoteUrl = String(content?.video_url || '')
+          }
+        } catch {
+          apiFailed = true
+        }
 
-          // Try to use local video file first (fast, no CORS)
-          if (session.localPath) {
-            try {
-              const buffer = await window.api.file.readFileBuffer(session.localPath)
-              const blob = new Blob([buffer], { type: 'video/mp4' })
-              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-              blobUrlRef.current = URL.createObjectURL(blob)
-              setVideoUrl(blobUrlRef.current)
-              remoteUrl = '' // Local path succeeded, skip remote fallback
-            } catch {
-              // Local file unavailable, fall through to remote URL
+        // Step 2: If API failed, fall back to localStorage session
+        if (apiFailed || !taskId) {
+          const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+          if (raw) {
+            const session = JSON.parse(raw)
+            taskId = session.taskId || null
+            remoteUrl = session.remoteUrl || session.videoUrl || ''
+
+            // Try local file from saved path
+            if (session.localPath && taskId) {
+              try {
+                const buffer = await window.api.file.readFileBuffer(session.localPath)
+                const blob = new Blob([buffer], { type: 'video/mp4' })
+                if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+                blobUrlRef.current = URL.createObjectURL(blob)
+                setVideoUrl(blobUrlRef.current)
+                remoteUrl = '' // Skip remote download below
+              } catch {
+                // File unavailable
+              }
             }
           }
         }
 
-        // No saved session or local file failed → try default task
-        if (!taskId) {
-          taskId = 'cgt-20260524203622-l66fm'
+        // Step 3: If we have a taskId but no blob URL yet, download the video
+        if (!taskId) return // Nothing to restore
+
+        setCreatedId(taskId)
+
+        if (remoteUrl && !blobUrlRef.current) {
+          // Check if we already have a local copy saved from a previous session
+          let foundLocal = false
           try {
-            const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
-            const content = result.content as Record<string, unknown> | undefined
-            remoteUrl = String(content?.video_url || '')
+            const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+            if (raw) {
+              const session = JSON.parse(raw)
+              if (session.taskId === taskId && session.localPath) {
+                // Same task as last time — try the cached file first
+                const buffer = await window.api.file.readFileBuffer(session.localPath)
+                const blob = new Blob([buffer], { type: 'video/mp4' })
+                if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+                blobUrlRef.current = URL.createObjectURL(blob)
+                setVideoUrl(blobUrlRef.current)
+                foundLocal = true
+              }
+            }
           } catch {
-            // Default task unavailable, page stays empty
-            taskId = null
+            // Ignore and fall through to download
+          }
+
+          if (!foundLocal) {
+            try {
+              const localPath = await window.api.file.downloadVideo({
+                url: remoteUrl,
+                destDir: currentDir,
+                filename: `Seedance_${taskId}_restore_${Date.now()}`
+              })
+              const buffer = await window.api.file.readFileBuffer(localPath)
+              const blob = new Blob([buffer], { type: 'video/mp4' })
+              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+              blobUrlRef.current = URL.createObjectURL(blob)
+              setVideoUrl(blobUrlRef.current)
+
+              // Save session for next visit
+              localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify({
+                taskId,
+                remoteUrl,
+                localPath,
+                dir: currentDir
+              }))
+            } catch {
+              // Download failed, fall back to remote URL
+              setVideoUrl(remoteUrl)
+            }
           }
         }
 
-        if (taskId) setCreatedId(taskId)
-        if (remoteUrl && !blobUrlRef.current) setVideoUrl(remoteUrl)
-
-        // Read saved keyframes from disk
-        if (taskId) {
-          const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
-          const autoFrames = result.autoFrames.filter(Boolean) as string[]
-          if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
-          if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
-        }
+        // Step 4: Read saved keyframes from disk
+        const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
+        const autoFrames = result.autoFrames.filter(Boolean) as string[]
+        if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
+        if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
       } catch {
-        // Session data stale, ignore
+        // Ignore restore errors
       }
     }
     restoreSession()
@@ -374,7 +427,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
               base64Data: dataUrl,
               destDir: currentDir,
               filename: `Seedance_${createdId}_keyframe_${i}`
-            }).catch(() => {})
+            }).catch((e) => console.error('自动关键帧保存失败:', e))
           }
         } catch {
           // Skip failed frame
@@ -397,10 +450,14 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     if (!video || !canvas) return
 
     const dataUrl = captureFrameToDataUrl(video, canvas)
-    if (!dataUrl) return
+    if (!dataUrl || !dataUrl.match(/^data:image\//)) return
 
     const index = manualKeyframes.length
     setManualKeyframes((prev) => [...prev, dataUrl])
+
+    // Flash feedback
+    setCaptureFlash(true)
+    setTimeout(() => setCaptureFlash(false), 300)
 
     // Save to disk
     try {
@@ -466,12 +523,11 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
   const handleVideoPlay = (): void => setIsPlaying(true)
 
-  // Determine keyframe button visibility:
-  // - Always show on hover
-  // - Always show when user has explicitly paused the video
-  // - Hide during playback unless hovering
-  // - Don't show on initial load (before any play/pause interaction)
-  const showKeyframeBtn = isHovering || (hasInteracted && !isPlaying && !!videoUrl)
+  // Keyframe button visibility:
+  // - Show on hover (whether playing or paused)
+  // - Show when video is paused
+  // - Hide during playback (unless hovering)
+  const showKeyframeBtn = isHovering || (!isPlaying && !!videoUrl)
 
   return (
     <div className="flex w-full h-full gap-6">
@@ -759,6 +815,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 {formatTimecode(currentTime, 24)}
               </div>
 
+              {/* Capture flash feedback */}
+              {captureFlash && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-green-500/80 text-white text-xs rounded px-3 py-1 animate-pulse">
+                  已截图
+                </div>
+              )}
+
               {/* Keyframe capture button */}
               {showKeyframeBtn && (
                 <button
@@ -781,15 +844,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 controls={false}
               />
 
-              {/* Play/Pause overlay button */}
+              {/* Play/Pause button — centered icon only, non-blocking */}
               {!isPlaying && (
                 <button
                   onClick={handlePlayPause}
-                  className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-background/80 p-3 hover:bg-background/95 transition-colors shadow-lg"
                 >
-                  <div className="rounded-full bg-background/90 p-3">
-                    <PlayIcon className="h-6 w-6" />
-                  </div>
+                  <PlayIcon className="h-6 w-6" />
                 </button>
               )}
             </div>

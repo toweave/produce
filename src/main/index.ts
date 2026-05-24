@@ -264,7 +264,7 @@ app.whenReady().then(() => {
   ipcMain.handle('file:save-keyframe', async (_event, { base64Data, destDir, filename }: { base64Data: string; destDir: string; filename: string }) => {
     await mkdir(destDir, { recursive: true })
     const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
-    if (!matches) throw new Error('无效的 Base64 图片数据')
+    if (!matches) throw new Error('无效的 Base64 图片数据: ' + (base64Data ? base64Data.substring(0, 50) : '空字符串'))
     const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
     const destPath = join(destDir, `${filename}.${ext}`)
     const buffer = Buffer.from(matches[2], 'base64')
