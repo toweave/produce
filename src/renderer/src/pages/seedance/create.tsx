@@ -8,6 +8,7 @@ type Resolution = '480p' | '720p' | '1080p'
 const STORAGE_DIRS_KEY = 'seedance-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance-storage-current'
 const STORAGE_LAST_SESSION_KEY = 'seedance-last-session'
+const FORM_PARAMS_KEY = 'seedance-form-params'
 
 function formatTimecode(seconds: number, fps = 24): string {
   const h = Math.floor(seconds / 3600)
@@ -51,7 +52,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Form state
   const [prompt, setPrompt] = useState('')
   const [imageData, setImageData] = useState<string | null>(null)
-  const [useLastFrame, setUseLastFrame] = useState(false)
+  const [useLastFrame, setUseLastFrame] = useState(true)
   const [lastFrameData, setLastFrameData] = useState<string | null>(null)
   const [ratio, setRatio] = useState<Ratio>('16:9')
   const [duration, setDuration] = useState(-1)
@@ -85,6 +86,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Keyframes state
   const [autoKeyframes, setAutoKeyframes] = useState<string[]>([])
   const [manualKeyframes, setManualKeyframes] = useState<string[]>([])
+  const [captureFlash, setCaptureFlash] = useState(false)
 
   // Init storage location
   useEffect(() => {
@@ -93,6 +95,47 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     }
   }, [])
+
+  // Restore form parameters from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(FORM_PARAMS_KEY)
+      if (raw) {
+        const saved = JSON.parse(raw)
+        if (saved.prompt) setPrompt(saved.prompt)
+        if (saved.ratio) setRatio(saved.ratio as Ratio)
+        if (saved.duration !== undefined) setDuration(saved.duration)
+        if (saved.resolution) setResolution(saved.resolution as Resolution)
+        if (saved.generateAudio !== undefined) setGenerateAudio(saved.generateAudio)
+        if (saved.watermark !== undefined) setWatermark(saved.watermark)
+        if (saved.imageData) setImageData(saved.imageData)
+        if (saved.lastFrameData) setLastFrameData(saved.lastFrameData)
+        if (saved.useLastFrame !== undefined) setUseLastFrame(saved.useLastFrame)
+      }
+    } catch {
+      // Ignore corrupted data
+    }
+  }, [])
+
+  // Save form parameters on change (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => {
+      try {
+        const data = { prompt, ratio, duration, resolution, generateAudio, watermark, useLastFrame }
+        // Only save image data if not too large
+        if (imageData && imageData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).imageData = imageData
+        if (lastFrameData && lastFrameData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).lastFrameData = lastFrameData
+        localStorage.setItem(FORM_PARAMS_KEY, JSON.stringify(data))
+      } catch {
+        // localStorage full, ignore
+      }
+    }, 500)
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    }
+  }, [prompt, ratio, duration, resolution, generateAudio, watermark, imageData, lastFrameData, useLastFrame])
 
   useEffect(() => {
     const initStorage = async (): Promise<void> => {
@@ -115,61 +158,113 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     initStorage()
   }, [])
 
-  // Restore last session (video + keyframes) from localStorage
+  // Restore last session: always query API for latest completed task, fall back to localStorage
   useEffect(() => {
     if (!currentDir) return
     const restoreSession = async (): Promise<void> => {
       try {
-        const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+        // Step 1: Always query API for the latest completed task
         let taskId: string | null = null
         let remoteUrl = ''
+        let apiFailed = false
 
-        if (raw) {
-          const session = JSON.parse(raw)
-          taskId = session.taskId || null
-          // Support both new (remoteUrl) and old (videoUrl) session keys
-          remoteUrl = session.remoteUrl || session.videoUrl || ''
+        try {
+          const listResult = await window.api.seedance.listTasks('?page_num=1&page_size=1&filter.status=succeeded') as { items?: { id: string }[] }
+          const latestTask = listResult?.items?.[0]
+          if (latestTask?.id) {
+            taskId = latestTask.id
+            const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
+            const content = result.content as Record<string, unknown> | undefined
+            remoteUrl = String(content?.video_url || '')
+          }
+        } catch {
+          apiFailed = true
+        }
 
-          // Try to use local video file first (fast, no CORS)
-          if (session.localPath) {
-            try {
-              const buffer = await window.api.file.readFileBuffer(session.localPath)
-              const blob = new Blob([buffer], { type: 'video/mp4' })
-              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-              blobUrlRef.current = URL.createObjectURL(blob)
-              setVideoUrl(blobUrlRef.current)
-              remoteUrl = '' // Local path succeeded, skip remote fallback
-            } catch {
-              // Local file unavailable, fall through to remote URL
+        // Step 2: If API failed, fall back to localStorage session
+        if (apiFailed || !taskId) {
+          const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+          if (raw) {
+            const session = JSON.parse(raw)
+            taskId = session.taskId || null
+            remoteUrl = session.remoteUrl || session.videoUrl || ''
+
+            // Try local file from saved path
+            if (session.localPath && taskId) {
+              try {
+                const buffer = await window.api.file.readFileBuffer(session.localPath)
+                const blob = new Blob([buffer], { type: 'video/mp4' })
+                if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+                blobUrlRef.current = URL.createObjectURL(blob)
+                setVideoUrl(blobUrlRef.current)
+                remoteUrl = '' // Skip remote download below
+              } catch {
+                // File unavailable
+              }
             }
           }
         }
 
-        // No saved session or local file failed → try default task
-        if (!taskId) {
-          taskId = 'cgt-20260524203622-l66fm'
+        // Step 3: If we have a taskId but no blob URL yet, download the video
+        if (!taskId) return // Nothing to restore
+
+        setCreatedId(taskId)
+
+        if (remoteUrl && !blobUrlRef.current) {
+          // Check if we already have a local copy saved from a previous session
+          let foundLocal = false
           try {
-            const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
-            const content = result.content as Record<string, unknown> | undefined
-            remoteUrl = String(content?.video_url || '')
+            const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+            if (raw) {
+              const session = JSON.parse(raw)
+              if (session.taskId === taskId && session.localPath) {
+                // Same task as last time — try the cached file first
+                const buffer = await window.api.file.readFileBuffer(session.localPath)
+                const blob = new Blob([buffer], { type: 'video/mp4' })
+                if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+                blobUrlRef.current = URL.createObjectURL(blob)
+                setVideoUrl(blobUrlRef.current)
+                foundLocal = true
+              }
+            }
           } catch {
-            // Default task unavailable, page stays empty
-            taskId = null
+            // Ignore and fall through to download
+          }
+
+          if (!foundLocal) {
+            try {
+              const localPath = await window.api.file.downloadVideo({
+                url: remoteUrl,
+                destDir: currentDir,
+                filename: `Seedance_${taskId}_restore_${Date.now()}`
+              })
+              const buffer = await window.api.file.readFileBuffer(localPath)
+              const blob = new Blob([buffer], { type: 'video/mp4' })
+              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+              blobUrlRef.current = URL.createObjectURL(blob)
+              setVideoUrl(blobUrlRef.current)
+
+              // Save session for next visit
+              localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify({
+                taskId,
+                remoteUrl,
+                localPath,
+                dir: currentDir
+              }))
+            } catch {
+              // Download failed, fall back to remote URL
+              setVideoUrl(remoteUrl)
+            }
           }
         }
 
-        if (taskId) setCreatedId(taskId)
-        if (remoteUrl && !blobUrlRef.current) setVideoUrl(remoteUrl)
-
-        // Read saved keyframes from disk
-        if (taskId) {
-          const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
-          const autoFrames = result.autoFrames.filter(Boolean) as string[]
-          if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
-          if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
-        }
+        // Step 4: Read saved keyframes from disk
+        const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
+        const autoFrames = result.autoFrames.filter(Boolean) as string[]
+        if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
+        if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
       } catch {
-        // Session data stale, ignore
+        // Ignore restore errors
       }
     }
     restoreSession()
@@ -374,7 +469,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
               base64Data: dataUrl,
               destDir: currentDir,
               filename: `Seedance_${createdId}_keyframe_${i}`
-            }).catch(() => {})
+            }).catch((e) => console.error('自动关键帧保存失败:', e))
           }
         } catch {
           // Skip failed frame
@@ -397,10 +492,14 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     if (!video || !canvas) return
 
     const dataUrl = captureFrameToDataUrl(video, canvas)
-    if (!dataUrl) return
+    if (!dataUrl || !dataUrl.match(/^data:image\//)) return
 
     const index = manualKeyframes.length
     setManualKeyframes((prev) => [...prev, dataUrl])
+
+    // Flash feedback
+    setCaptureFlash(true)
+    setTimeout(() => setCaptureFlash(false), 300)
 
     // Save to disk
     try {
@@ -420,6 +519,45 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       console.error('关键帧保存失败')
     }
   }, [manualKeyframes, currentDir, createdId])
+
+  // Delete a single manual keyframe
+  const handleDeleteManualKeyframe = useCallback(async (index: number): Promise<void> => {
+    if (!window.confirm('确定删除此关键帧？')) return
+    try {
+      await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_manual_${index}.png`)
+      for (let i = index + 1; i < manualKeyframes.length; i++) {
+        const oldFilename = `Seedance_${createdId}_manual_${i}`
+        const newFilename = `Seedance_${createdId}_manual_${i - 1}`
+        await window.api.file.saveKeyframe({
+          base64Data: manualKeyframes[i],
+          destDir: currentDir,
+          filename: newFilename
+        })
+        await window.api.file.deleteFile(`${currentDir}/${oldFilename}.png`)
+      }
+      setManualKeyframes((prev) => prev.filter((_, i) => i !== index))
+    } catch (e) {
+      console.error('删除关键帧失败:', e)
+    }
+  }, [manualKeyframes, currentDir, createdId])
+
+  // Clear all keyframes
+  const handleClearAllKeyframes = useCallback(async (): Promise<void> => {
+    if (!window.confirm('确定清空所有关键帧？此操作不可撤销')) return
+    try {
+      for (let i = 0; i < autoKeyframes.length; i++) {
+        await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_keyframe_${i}.png`).catch(() => {})
+      }
+      for (let i = 0; i < manualKeyframes.length; i++) {
+        await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_manual_${i}.png`).catch(() => {})
+      }
+    } catch {
+      // Ignore file deletion errors
+    }
+    setAutoKeyframes([])
+    setManualKeyframes([])
+  }, [autoKeyframes, manualKeyframes, currentDir, createdId])
+
 
   // Keyboard controls (frame stepping when paused)
   useEffect(() => {
@@ -466,12 +604,11 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
   const handleVideoPlay = (): void => setIsPlaying(true)
 
-  // Determine keyframe button visibility:
-  // - Always show on hover
-  // - Always show when user has explicitly paused the video
-  // - Hide during playback unless hovering
-  // - Don't show on initial load (before any play/pause interaction)
-  const showKeyframeBtn = isHovering || (hasInteracted && !isPlaying && !!videoUrl)
+  // Keyframe button visibility:
+  // - Show on hover (whether playing or paused)
+  // - Show when video is paused
+  // - Hide during playback (unless hovering)
+  const showKeyframeBtn = isHovering || (!isPlaying && !!videoUrl)
 
   return (
     <div className="flex w-full h-full gap-6">
@@ -669,7 +806,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           <button
             onClick={handleSubmit}
             disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {submitting ? (
               <>
@@ -686,7 +823,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           {createdId && (
             <button
               onClick={() => navigate(`/seedance/tasks/${createdId}`)}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-2 text-sm font-medium hover:bg-accent"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
             >
               查看详情
             </button>
@@ -759,6 +896,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 {formatTimecode(currentTime, 24)}
               </div>
 
+              {/* Capture flash feedback */}
+              {captureFlash && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-green-500/80 text-white text-xs rounded px-3 py-1 animate-pulse">
+                  已截图
+                </div>
+              )}
+
               {/* Keyframe capture button */}
               {showKeyframeBtn && (
                 <button
@@ -781,15 +925,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 controls={false}
               />
 
-              {/* Play/Pause overlay button */}
+              {/* Play/Pause button — centered icon only, non-blocking */}
               {!isPlaying && (
                 <button
                   onClick={handlePlayPause}
-                  className="absolute inset-0 flex items-center justify-center bg-black/20 hover:bg-black/30 transition-colors"
+                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-background/80 p-3 hover:bg-background/95 transition-colors shadow-lg"
                 >
-                  <div className="rounded-full bg-background/90 p-3">
-                    <PlayIcon className="h-6 w-6" />
-                  </div>
+                  <PlayIcon className="h-6 w-6" />
                 </button>
               )}
             </div>
@@ -830,6 +972,28 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                         <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
                           {i === 0 ? '开头' : i === 5 ? '结尾' : `${Math.round((i / 5) * 100)}%`}
                         </span>
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setImageData(dataUrl)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为首帧"
+                          >
+                            首帧
+                          </button>
+                          <button
+                            onClick={() => {
+                              setLastFrameData(dataUrl)
+                              setUseLastFrame(true)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为尾帧"
+                          >
+                            尾帧
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -838,7 +1002,15 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
               {manualKeyframes.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">手动截图</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-xs font-medium text-muted-foreground">手动截图</p>
+                    <button
+                      onClick={handleClearAllKeyframes}
+                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    >
+                      清空全部
+                    </button>
+                  </div>
                   <div className="grid grid-cols-3 gap-2">
                     {manualKeyframes.map((dataUrl, i) => (
                       <div key={`manual-${i}`} className="relative group">
@@ -847,6 +1019,35 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                           alt={`手动截图 ${i}`}
                           className="w-full rounded border border-border object-cover aspect-video"
                         />
+                        {/* Hover overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setImageData(dataUrl)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为首帧"
+                          >
+                            首帧
+                          </button>
+                          <button
+                            onClick={() => {
+                              setLastFrameData(dataUrl)
+                              setUseLastFrame(true)
+                            }}
+                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
+                            title="引用为尾帧"
+                          >
+                            尾帧
+                          </button>
+                          <button
+                            onClick={() => handleDeleteManualKeyframe(i)}
+                            className="rounded bg-red-500/90 px-2 py-1 text-[10px] font-medium text-white hover:bg-red-600 transition-colors"
+                            title="删除"
+                          >
+                            删除
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

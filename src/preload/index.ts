@@ -25,7 +25,8 @@ const api = {
     downloadVideo: (opts) => ipcRenderer.invoke('file:download-video', opts),
     saveKeyframe: (opts) => ipcRenderer.invoke('file:save-keyframe', opts),
     readFileBuffer: (filePath) => ipcRenderer.invoke('file:read-file-buffer', filePath),
-    readKeyframes: (opts) => ipcRenderer.invoke('file:read-keyframes', opts)
+    readKeyframes: (opts) => ipcRenderer.invoke('file:read-keyframes', opts),
+    deleteFile: (filePath) => ipcRenderer.invoke('file:delete-file', filePath)
   },
   logs: {
     query: (options) => ipcRenderer.invoke('logs:query', options)

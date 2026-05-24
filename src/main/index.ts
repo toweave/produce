@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { readFile, writeFile, mkdir, unlink } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { initDatabase, insertLog, queryLogs } from './database'
@@ -264,12 +264,16 @@ app.whenReady().then(() => {
   ipcMain.handle('file:save-keyframe', async (_event, { base64Data, destDir, filename }: { base64Data: string; destDir: string; filename: string }) => {
     await mkdir(destDir, { recursive: true })
     const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
-    if (!matches) throw new Error('无效的 Base64 图片数据')
+    if (!matches) throw new Error('无效的 Base64 图片数据: ' + (base64Data ? base64Data.substring(0, 50) : '空字符串'))
     const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
     const destPath = join(destDir, `${filename}.${ext}`)
     const buffer = Buffer.from(matches[2], 'base64')
     await writeFile(destPath, buffer)
     return destPath
+  })
+
+  ipcMain.handle('file:delete-file', async (_event, filePath: string) => {
+    await unlink(filePath)
   })
 
   ipcMain.handle('file:read-file-buffer', async (_event, filePath: string) => {
