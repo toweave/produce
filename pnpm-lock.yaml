@@ -41,18 +41,12 @@ importers:
       react-router-dom:
         specifier: ^7.15.1
         version: 7.15.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      shadcn:
-        specifier: ^4.8.0
-        version: 4.8.0(@types/node@22.19.19)(typescript@6.0.3)
       tailwind-merge:
         specifier: ^3.6.0
         version: 3.6.0
       tw-animate-css:
         specifier: ^1.4.0
         version: 1.4.0
-      xgplayer:
-        specifier: ^3.0.24
-        version: 3.0.24(core-js@3.49.0)
     devDependencies:
       '@electron-toolkit/eslint-config-prettier':
         specifier: ^3.0.0
@@ -108,6 +102,9 @@ importers:
       react-dom:
         specifier: ^19.2.6
         version: 19.2.6(react@19.2.6)
+      shadcn:
+        specifier: ^4.8.0
+        version: 4.8.0(@types/node@22.19.19)(typescript@6.0.3)
       tailwindcss:
         specifier: ^4.3.0
         version: 4.3.0
@@ -117,6 +114,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@22.19.19)(jiti@2.7.0)
+      xgplayer:
+        specifier: ^3.0.24
+        version: 3.0.24(core-js@3.49.0)
 
 packages:
 
