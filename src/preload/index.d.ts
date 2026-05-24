@@ -15,13 +15,48 @@ interface FileAPI {
   readBase64: (filePath: string) => Promise<string>
 }
 
+interface LogEntry {
+  id: number
+  version: string
+  task_id: string | null
+  operation: string
+  model: string
+  prompt: string | null
+  status: string | null
+  image_count: number
+  video_count: number
+  audio_count: number
+  params: string | null
+  result: string | null
+  error: string | null
+  created_at: string
+}
+
+interface LogQueryOptions {
+  version: string
+  operation?: string
+  page: number
+  pageSize: number
+}
+
+interface LogQueryResult {
+  items: LogEntry[]
+  total: number
+}
+
+interface LogsAPI {
+  query: (options: LogQueryOptions) => Promise<LogQueryResult>
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
     api: {
       seedance: SeedanceAPI
+      seedance2: SeedanceAPI
       dialog: DialogAPI
       file: FileAPI
+      logs: LogsAPI
     }
   }
 }

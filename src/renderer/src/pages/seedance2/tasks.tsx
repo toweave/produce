@@ -46,7 +46,7 @@ const STATUS_LABEL: Record<string, string> = {
   expired: '已过期'
 }
 
-export default function SeedanceTasksPage(): React.JSX.Element {
+export default function Seedance2TasksPage(): React.JSX.Element {
   const navigate = useNavigate()
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [total, setTotal] = useState(0)
@@ -66,7 +66,7 @@ export default function SeedanceTasksPage(): React.JSX.Element {
       if (statusFilter) {
         params.set('filter.status', statusFilter)
       }
-      const result = await window.api.seedance.listTasks(`?${params.toString()}`) as ListResponse
+      const result = await window.api.seedance2.listTasks(`?${params.toString()}`) as ListResponse
       setTasks(result.items || [])
       setTotal(result.total || 0)
     } catch (err) {
@@ -82,7 +82,7 @@ export default function SeedanceTasksPage(): React.JSX.Element {
 
   const handleDelete = async (id: string): Promise<void> => {
     try {
-      await window.api.seedance.deleteTask(id)
+      await window.api.seedance2.deleteTask(id)
       fetchTasks()
     } catch (err) {
       console.error('Delete failed:', err)
@@ -172,7 +172,7 @@ export default function SeedanceTasksPage(): React.JSX.Element {
                   <td className="px-4 py-2.5 text-right">
                     <div className="inline-flex gap-1">
                       <button
-                        onClick={() => navigate(`/seedance/tasks/${task.id}`)}
+                        onClick={() => navigate(`/seedance2/tasks/${task.id}`)}
                         className="rounded p-1 hover:bg-accent"
                         title="查看详情"
                       >

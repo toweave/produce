@@ -6,6 +6,10 @@ import PlaceholderPage from '@/pages/page'
 import SeedanceCreatePage from '@/pages/seedance/create'
 import SeedanceTasksPage from '@/pages/seedance/tasks'
 import SeedanceTaskDetailPage from '@/pages/seedance/task-detail'
+import Seedance2CreatePage from '@/pages/seedance2/create'
+import Seedance2TasksPage from '@/pages/seedance2/tasks'
+import Seedance2TaskDetailPage from '@/pages/seedance2/task-detail'
+import LogsViewer from '@/pages/logs-viewer'
 
 function App(): React.JSX.Element {
   return (
@@ -32,6 +36,11 @@ function App(): React.JSX.Element {
         <Route path="/seedance/create" element={<SeedanceCreatePage />} />
         <Route path="/seedance/tasks" element={<SeedanceTasksPage />} />
         <Route path="/seedance/tasks/:id" element={<SeedanceTaskDetailPage />} />
+        <Route path="/seedance2/create" element={<Seedance2CreatePage />} />
+        <Route path="/seedance2/tasks" element={<Seedance2TasksPage />} />
+        <Route path="/seedance2/tasks/:id" element={<Seedance2TaskDetailPage />} />
+        <Route path="/seedance/logs" element={<LogsViewer defaultVersion="1.5" />} />
+        <Route path="/seedance2/logs" element={<LogsViewer defaultVersion="2.0" />} />
         <Route path="*" element={<HomePage />} />
       </Route>
     </Routes>

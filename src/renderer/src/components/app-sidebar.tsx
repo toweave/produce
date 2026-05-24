@@ -170,6 +170,32 @@ const data = {
           title: "任务列表",
           url: "/seedance/tasks",
         },
+        {
+          title: "操作日志",
+          url: "/seedance/logs",
+        },
+      ],
+    },
+    {
+      title: "Seedance-2.0",
+      url: "/seedance2",
+      icon: (
+        <VideoIcon
+        />
+      ),
+      items: [
+        {
+          title: "视频创作",
+          url: "/seedance2/create",
+        },
+        {
+          title: "任务列表",
+          url: "/seedance2/tasks",
+        },
+        {
+          title: "操作日志",
+          url: "/seedance2/logs",
+        },
       ],
     },
   ],

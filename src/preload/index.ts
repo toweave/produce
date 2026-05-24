@@ -9,11 +9,20 @@ const api = {
     listTasks: (query) => ipcRenderer.invoke('seedance:list-tasks', query),
     deleteTask: (id) => ipcRenderer.invoke('seedance:delete-task', id)
   },
+  seedance2: {
+    createTask: (params) => ipcRenderer.invoke('seedance2:create-task', params),
+    getTask: (id) => ipcRenderer.invoke('seedance2:get-task', id),
+    listTasks: (query) => ipcRenderer.invoke('seedance2:list-tasks', query),
+    deleteTask: (id) => ipcRenderer.invoke('seedance2:delete-task', id)
+  },
   dialog: {
     openFile: (filters) => ipcRenderer.invoke('dialog:open-file', filters)
   },
   file: {
     readBase64: (filePath) => ipcRenderer.invoke('file:read-base64', filePath)
+  },
+  logs: {
+    query: (options) => ipcRenderer.invoke('logs:query', options)
   }
 }
 

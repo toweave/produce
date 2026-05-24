@@ -4,9 +4,33 @@ import { join } from 'path'
 import { readFile } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { initDatabase, insertLog, queryLogs } from './database'
 
 const ARK_API_BASE = 'https://ark.cn-beijing.volces.com/api/v3'
 const ARK_API_KEY = process.env['VITE_SEE_DANCE_API_KEY'] || ''
+
+const MIME_MAP: Record<string, string> = {
+  png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+  webp: 'image/webp', bmp: 'image/bmp', tiff: 'image/tiff',
+  gif: 'image/gif', heic: 'image/heic', heif: 'image/heif',
+  mp3: 'audio/mpeg', wav: 'audio/wav',
+  mp4: 'video/mp4', mov: 'video/quicktime'
+}
+
+type ContentItem = { type?: string; text?: string }
+
+function extractContentInfo(params: Record<string, unknown>): { prompt: string; imageCount: number; videoCount: number; audioCount: number } {
+  const content = (params.content || []) as ContentItem[]
+  let prompt = ''
+  let imageCount = 0; let videoCount = 0; let audioCount = 0
+  for (const item of content) {
+    if (item.type === 'text') prompt = (item.text || '').slice(0, 200)
+    else if (item.type === 'image_url') imageCount++
+    else if (item.type === 'video_url') videoCount++
+    else if (item.type === 'audio_url') audioCount++
+  }
+  return { prompt, imageCount, videoCount, audioCount }
+}
 
 async function arkFetch(path: string, options: RequestInit = {}): Promise<unknown> {
   const url = `${ARK_API_BASE}${path}`
@@ -76,38 +100,70 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  // Initialize database for operation logging
+  initDatabase()
+
   // --- Seedance IPC handlers ---
   ipcMain.handle('seedance:create-task', async (_event, params) => {
     if (!ARK_API_KEY) {
       throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
     }
-    return arkFetch('/contents/generations/tasks', {
-      method: 'POST',
-      body: JSON.stringify(params)
-    })
+    const info = extractContentInfo(params as Record<string, unknown>)
+    try {
+      const result = await arkFetch('/contents/generations/tasks', {
+        method: 'POST',
+        body: JSON.stringify(params)
+      })
+      insertLog({ version: '1.5', task_id: (result as Record<string, unknown>)?.id as string || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '1.5', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
   })
 
   ipcMain.handle('seedance:get-task', async (_event, id: string) => {
     if (!ARK_API_KEY) {
       throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
     }
-    return arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`)
+    try {
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`)
+      insertLog({ version: '1.5', task_id: id, operation: 'get', model: (result as Record<string, unknown>)?.model as string || '', prompt: null, status: (result as Record<string, unknown>)?.status as string || null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '1.5', task_id: id, operation: 'get', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
   })
 
   ipcMain.handle('seedance:list-tasks', async (_event, query: string) => {
     if (!ARK_API_KEY) {
       throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
     }
-    return arkFetch(`/contents/generations/tasks${query}`)
+    try {
+      const result = await arkFetch(`/contents/generations/tasks${query}`)
+      insertLog({ version: '1.5', task_id: null, operation: 'list', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: query, result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '1.5', task_id: null, operation: 'list', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: query, result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
   })
 
   ipcMain.handle('seedance:delete-task', async (_event, id: string) => {
     if (!ARK_API_KEY) {
       throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
     }
-    return arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, {
-      method: 'DELETE'
-    })
+    try {
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      })
+      insertLog({ version: '1.5', task_id: id, operation: 'delete', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '1.5', task_id: id, operation: 'delete', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
   })
 
   ipcMain.handle('dialog:open-file', async (_event, filters?: Electron.FileFilter[]) => {
@@ -123,8 +179,77 @@ app.whenReady().then(() => {
 
   ipcMain.handle('file:read-base64', async (_event, filePath: string) => {
     const buffer = await readFile(filePath)
-    const ext = filePath.split('.').pop()?.toLowerCase() || 'png'
-    return `data:image/${ext};base64,${buffer.toString('base64')}`
+    const ext = filePath.split('.').pop()?.toLowerCase() || ''
+    const mime = MIME_MAP[ext] || `image/${ext}`
+    return `data:${mime};base64,${buffer.toString('base64')}`
+  })
+
+  // --- Seedance 2.0 IPC handlers ---
+  ipcMain.handle('seedance2:create-task', async (_event, params) => {
+    if (!ARK_API_KEY) {
+      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    }
+    const info = extractContentInfo(params as Record<string, unknown>)
+    try {
+      const result = await arkFetch('/contents/generations/tasks', {
+        method: 'POST',
+        body: JSON.stringify(params)
+      })
+      insertLog({ version: '2.0', task_id: (result as Record<string, unknown>)?.id as string || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '2.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
+  })
+
+  ipcMain.handle('seedance2:get-task', async (_event, id: string) => {
+    if (!ARK_API_KEY) {
+      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    }
+    try {
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`)
+      insertLog({ version: '2.0', task_id: id, operation: 'get', model: (result as Record<string, unknown>)?.model as string || '', prompt: null, status: (result as Record<string, unknown>)?.status as string || null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '2.0', task_id: id, operation: 'get', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
+  })
+
+  ipcMain.handle('seedance2:list-tasks', async (_event, query: string) => {
+    if (!ARK_API_KEY) {
+      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    }
+    try {
+      const result = await arkFetch(`/contents/generations/tasks${query}`)
+      insertLog({ version: '2.0', task_id: null, operation: 'list', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: query, result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '2.0', task_id: null, operation: 'list', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: query, result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
+  })
+
+  ipcMain.handle('seedance2:delete-task', async (_event, id: string) => {
+    if (!ARK_API_KEY) {
+      throw new Error('请先配置 VITE_SEE_DANCE_API_KEY 环境变量')
+    }
+    try {
+      const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      })
+      insertLog({ version: '2.0', task_id: id, operation: 'delete', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '2.0', task_id: id, operation: 'delete', model: '', prompt: null, status: null, image_count: 0, video_count: 0, audio_count: 0, params: null, result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
+  })
+
+  // --- Logs query IPC handler ---
+  ipcMain.handle('logs:query', async (_event, options) => {
+    return queryLogs(options)
   })
 
   app.on('activate', function () {

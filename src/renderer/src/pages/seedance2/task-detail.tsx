@@ -44,7 +44,7 @@ const STATUS_BADGE: Record<string, string> = {
   expired: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
 }
 
-export default function SeedanceTaskDetailPage(): React.JSX.Element {
+export default function Seedance2TaskDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [task, setTask] = useState<TaskDetail | null>(null)
@@ -55,7 +55,7 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
   const fetchTask = useCallback(async (): Promise<void> => {
     if (!id) return
     try {
-      const result = await window.api.seedance.getTask(id) as TaskDetail
+      const result = await window.api.seedance2.getTask(id) as TaskDetail
       setTask(result)
       setError('')
     } catch (err) {
@@ -80,8 +80,8 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
     if (!id) return
     setDeleting(true)
     try {
-      await window.api.seedance.deleteTask(id)
-      navigate('/seedance/tasks')
+      await window.api.seedance2.deleteTask(id)
+      navigate('/seedance2/tasks')
     } catch (err) {
       console.error('Delete failed:', err)
       setDeleting(false)
@@ -99,7 +99,7 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
   if (error || !task) {
     return (
       <div className="p-6 w-full">
-        <button onClick={() => navigate('/seedance/tasks')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+        <button onClick={() => navigate('/seedance2/tasks')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
           <ArrowLeftIcon className="h-4 w-4" /> 返回任务列表
         </button>
         <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
@@ -113,7 +113,7 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
 
   return (
     <div className="p-6 w-full">
-      <button onClick={() => navigate('/seedance/tasks')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <button onClick={() => navigate('/seedance2/tasks')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
         <ArrowLeftIcon className="h-4 w-4" /> 返回任务列表
       </button>
 
