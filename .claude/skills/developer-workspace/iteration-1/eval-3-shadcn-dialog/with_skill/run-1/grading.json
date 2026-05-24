@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "通过 shadcn CLI 添加了 Dialog 组件（检查 components/ui/ 下是否有 dialog.jsx）",
+      "passed": true,
+      "evidence": "Found dialog.jsx at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-3-shadcn-dialog/with_skill/outputs/src/renderer/src/components/ui/dialog.jsx"
+    },
+    {
+      "text": "创建的设置弹窗组件使用 @/ 别名导入 Dialog 和 cn",
+      "passed": true,
+      "evidence": "Found @/ import aliases"
+    },
+    {
+      "text": "设置弹窗包含一个主题切换开关（toggle/switch）",
+      "passed": true,
+      "evidence": "Found theme toggle components"
+    },
+    {
+      "text": "设置弹窗显示版本信息（应用版本或 Electron 版本）",
+      "passed": true,
+      "evidence": "Found version information display"
+    },
+    {
+      "text": "将设置弹窗集成到了 App.jsx 中",
+      "passed": true,
+      "evidence": "App.jsx imports SettingsDialog or Dialog"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  }
+}

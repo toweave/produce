@@ -1,0 +1,32 @@
+{
+  "eval_id": 2,
+  "eval_name": "系统托盘最小化功能",
+  "prompt": "给应用添加系统托盘功能。关闭窗口时最小化到系统托盘，点击托盘图标显示菜单（显示/隐藏、退出）。Windows 和 macOS 都需要支持。",
+  "assertions": [
+    {
+      "text": "在主进程中创建了 Tray 实例并设置了上下文菜单",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "窗口关闭按钮行为修改为隐藏到托盘而非退出（拦截 close 事件）",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "托盘菜单包含「显示/隐藏窗口」和「退出」选项",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "正确处理 macOS 差异（window-all-closed 不退出应用）",
+      "passed": false,
+      "evidence": ""
+    },
+    {
+      "text": "使用了 Electron 的 Tray 和 Menu 模块",
+      "passed": false,
+      "evidence": ""
+    }
+  ]
+}

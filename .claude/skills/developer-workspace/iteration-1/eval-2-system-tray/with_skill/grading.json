@@ -1,0 +1,35 @@
+{
+  "expectations": [
+    {
+      "text": "在主进程中创建了 Tray 实例并设置了上下文菜单",
+      "passed": true,
+      "evidence": "Found Tray instantiation with context menu"
+    },
+    {
+      "text": "窗口关闭按钮行为修改为隐藏到托盘而非退出（拦截 close 事件）",
+      "passed": true,
+      "evidence": "Found close event interception with hide to tray"
+    },
+    {
+      "text": "托盘菜单包含「显示/隐藏窗口」和「退出」选项",
+      "passed": true,
+      "evidence": "Found show/hide and quit menu items in tray menu"
+    },
+    {
+      "text": "正确处理 macOS 差异（window-all-closed 不退出应用）",
+      "passed": true,
+      "evidence": "Found macOS platform handling (darwin check)"
+    },
+    {
+      "text": "使用了 Electron 的 Tray 和 Menu 模块",
+      "passed": true,
+      "evidence": "Found Tray and Menu imports/usage"
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed": 0,
+    "total": 5,
+    "pass_rate": 1.0
+  }
+}

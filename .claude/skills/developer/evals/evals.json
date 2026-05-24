@@ -1,0 +1,48 @@
+{
+  "skill_name": "developer",
+  "evals": [
+    {
+      "id": 1,
+      "name": "文件拖拽导入功能",
+      "prompt": "给我的应用添加文件拖拽导入功能。用户可以从系统文件管理器拖拽文件到应用窗口，松开后读取文件内容并显示。需要完整的 IPC 实现。支持拖拽图片和文本文件。",
+      "expected_output": "包含主进程文件读取 handler、preload 桥接 API、渲染进程拖拽 UI 组件的完整代码实现，遵循项目三进程架构和编码规范",
+      "files": [],
+      "expectations": [
+        "修改了 preload/index.js，通过 contextBridge 暴露了拖拽文件相关的 API",
+        "修改了 main/index.js，添加了 ipcMain.handle 处理文件读取逻辑",
+        "创建了渲染进程拖拽组件，包含 dragover/drop 事件处理",
+        "同时支持图片和文本文件类型",
+        "渲染进程的文件引用使用了 @/ 别名",
+        "遵循了三个进程的 IPC invoke/handle 通信模式"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "系统托盘最小化功能",
+      "prompt": "给应用添加系统托盘功能。关闭窗口时最小化到系统托盘，点击托盘图标显示菜单（显示/隐藏、退出）。Windows 和 macOS 都需要支持。",
+      "expected_output": "主进程托盘创建与管理代码，处理窗口最小化/关闭行为的修改，跨平台差异处理（macOS 不退出应用）",
+      "files": [],
+      "expectations": [
+        "在主进程中创建了 Tray 实例并设置了上下文菜单",
+        "窗口关闭按钮行为修改为隐藏到托盘而非退出",
+        "托盘菜单包含显示/隐藏窗口和退出选项",
+        "正确处理 macOS 差异（window-all-closed 不退出应用）",
+        "使用了 Electron 的 Tray 和 Menu 模块"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "shadcn Dialog 设置弹窗",
+      "prompt": "帮我添加 shadcn 的 Dialog 组件，然后用它实现一个简单的设置弹窗，包含一个主题切换开关和一个版本信息显示。使用 @/ 别名导入。",
+      "expected_output": "使用 shadcn CLI 添加 Dialog 组件的命令、基于 Dialog 封装的 SettingsDialog 组件代码、在 App.jsx 中的集成使用",
+      "files": [],
+      "expectations": [
+        "通过 shadcn CLI 添加了 Dialog 组件",
+        "创建的设置弹窗组件使用 @/ 别名导入 Dialog 和 cn",
+        "设置弹窗包含一个主题切换开关",
+        "设置弹窗显示版本信息",
+        "将设置弹窗集成到了 App.jsx 中"
+      ]
+    }
+  ]
+}
