@@ -16,13 +16,23 @@ const api = {
     deleteTask: (id) => ipcRenderer.invoke('seedance2:delete-task', id)
   },
   dialog: {
-    openFile: (filters) => ipcRenderer.invoke('dialog:open-file', filters)
+    openFile: (filters) => ipcRenderer.invoke('dialog:open-file', filters),
+    selectDirectory: () => ipcRenderer.invoke('dialog:select-directory')
   },
   file: {
-    readBase64: (filePath) => ipcRenderer.invoke('file:read-base64', filePath)
+    readBase64: (filePath) => ipcRenderer.invoke('file:read-base64', filePath),
+    getDefaultPath: () => ipcRenderer.invoke('file:get-default-path'),
+    downloadVideo: (opts) => ipcRenderer.invoke('file:download-video', opts),
+    saveKeyframe: (opts) => ipcRenderer.invoke('file:save-keyframe', opts),
+    readFileBuffer: (filePath) => ipcRenderer.invoke('file:read-file-buffer', filePath),
+    readKeyframes: (opts) => ipcRenderer.invoke('file:read-keyframes', opts)
   },
   logs: {
     query: (options) => ipcRenderer.invoke('logs:query', options)
+  },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    set: (partial) => ipcRenderer.invoke('settings:set', partial)
   }
 }
 

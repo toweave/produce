@@ -9,10 +9,16 @@ interface SeedanceAPI {
 
 interface DialogAPI {
   openFile: (filters?: Electron.FileFilter[]) => Promise<string | null>
+  selectDirectory: () => Promise<string | null>
 }
 
 interface FileAPI {
   readBase64: (filePath: string) => Promise<string>
+  getDefaultPath: () => Promise<string>
+  downloadVideo: (opts: { url: string; destDir: string; filename: string }) => Promise<string>
+  saveKeyframe: (opts: { base64Data: string; destDir: string; filename: string }) => Promise<string>
+  readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
+  readKeyframes: (opts: { dir: string; taskId: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
 }
 
 interface LogEntry {
@@ -48,6 +54,18 @@ interface LogsAPI {
   query: (options: LogQueryOptions) => Promise<LogQueryResult>
 }
 
+interface SettingsData {
+  seedance15Key: string
+  seedance20Key: string
+  userInfo: { name: string; email: string }
+  theme: string
+}
+
+interface SettingsAPI {
+  get: () => Promise<SettingsData>
+  set: (partial: Partial<SettingsData>) => Promise<SettingsData>
+}
+
 declare global {
   interface Window {
     electron: ElectronAPI
@@ -57,6 +75,7 @@ declare global {
       dialog: DialogAPI
       file: FileAPI
       logs: LogsAPI
+      settings: SettingsAPI
     }
   }
 }
