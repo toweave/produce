@@ -2,6 +2,7 @@ appId: com.electron.app
 productName: produce
 directories:
   buildResources: build
+compression: maximum
 files:
   - '!**/.vscode/*'
   - '!src/*'
@@ -9,6 +10,9 @@ files:
   - '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,dev-app-update.yml,CHANGELOG.md,README.md}'
   - '!{.env,.env.*,.npmrc,pnpm-lock.yaml}'
   - '!{tsconfig.json,tsconfig.node.json,tsconfig.web.json}'
+  - '!**/*.map'
+  - '!**/*.test.*'
+  - '!**/__tests__/**'
 asarUnpack:
   - resources/**
   - node_modules/better-sqlite3/**
@@ -19,7 +23,12 @@ nsis:
   shortcutName: ${productName}
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
+  oneClick: false
+  allowToChangeInstallationDirectory: true
 mac:
+  target:
+    - dmg
+    - zip
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -29,13 +38,14 @@ mac:
   notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
+  compression: ultra
 linux:
   target:
     - AppImage
-    - snap
     - deb
-  maintainer: electronjs.org
+  maintainer: toweave
   category: Utility
+  executableName: produce
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false
