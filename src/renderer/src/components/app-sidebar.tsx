@@ -14,15 +14,10 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, VideoIcon } from "lucide-react"
 
 // This is sample data.
 const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
   teams: [
     {
       name: "Acme Inc",
@@ -154,6 +149,50 @@ const data = {
         },
       ],
     },
+    {
+      title: "Seedance-1.5",
+      url: "/seedance",
+      icon: (
+        <VideoIcon
+        />
+      ),
+      items: [
+        {
+          title: "视频创作",
+          url: "/seedance/create",
+        },
+        {
+          title: "任务列表",
+          url: "/seedance/tasks",
+        },
+        {
+          title: "操作日志",
+          url: "/seedance/logs",
+        },
+      ],
+    },
+    {
+      title: "Seedance-2.0",
+      url: "/seedance2",
+      icon: (
+        <VideoIcon
+        />
+      ),
+      items: [
+        {
+          title: "视频创作",
+          url: "/seedance2/create",
+        },
+        {
+          title: "任务列表",
+          url: "/seedance2/tasks",
+        },
+        {
+          title: "操作日志",
+          url: "/seedance2/logs",
+        },
+      ],
+    },
   ],
   projects: [
     {
@@ -195,7 +234,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarContent>
       <SidebarFooter>
         <ThemeToggle />
-        <NavUser user={data.user} />
+        <NavUser />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
