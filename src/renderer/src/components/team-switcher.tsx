@@ -66,7 +66,10 @@ export function TeamSwitcher({
             {teams.map((team, index) => (
               <DropdownMenuItem
                 key={team.name}
-                onClick={() => setActiveTeam(team)}
+                onClick={() => {
+                  setActiveTeam(team)
+                  console.log('click switch team:', team.name)
+                }}
                 className="gap-2 p-2"
               >
                 <div className="flex size-6 items-center justify-center rounded-md border">
@@ -77,7 +80,10 @@ export function TeamSwitcher({
               </DropdownMenuItem>
             ))}
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 p-2">
+            <DropdownMenuItem
+              className="gap-2 p-2"
+              onClick={() => console.log('click: Add team')}
+            >
               <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
                 <PlusIcon className="size-4" />
               </div>

@@ -36,7 +36,13 @@ export function NavProjects({
         {projects.map((item) => (
           <SidebarMenuItem key={item.name}>
             <SidebarMenuButton asChild>
-              <a href={item.url}>
+              <a
+                href={item.url}
+                onClick={(e) => {
+                  e.preventDefault()
+                  console.log('click:', item.name)
+                }}
+              >
                 {item.icon}
                 <span>{item.name}</span>
               </a>
@@ -57,16 +63,16 @@ export function NavProjects({
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => console.log('click: View Project')}>
                   <FolderIcon className="text-muted-foreground" />
                   <span>View Project</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => console.log('click: Share Project')}>
                   <ArrowRightIcon className="text-muted-foreground" />
                   <span>Share Project</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => console.log('click: Delete Project')}>
                   <Trash2Icon className="text-muted-foreground" />
                   <span>Delete Project</span>
                 </DropdownMenuItem>
@@ -75,7 +81,10 @@ export function NavProjects({
           </SidebarMenuItem>
         ))}
         <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
+          <SidebarMenuButton
+            className="text-sidebar-foreground/70"
+            onClick={() => console.log('click: More')}
+          >
             <MoreHorizontalIcon className="text-sidebar-foreground/70" />
             <span>More</span>
           </SidebarMenuButton>

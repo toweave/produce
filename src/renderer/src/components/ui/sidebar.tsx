@@ -15,11 +15,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { PanelLeftIcon } from "lucide-react"
 
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
@@ -496,18 +491,18 @@ function SidebarMenuButton({
   isActive = false,
   variant = "default",
   size = "default",
-  tooltip,
   className,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean
   isActive?: boolean
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>
+  variant?: "default" | "outline"
+  size?: "default" | "sm" | "lg"
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button"
-  const { isMobile, state } = useSidebar()
+  const { state, setOpen } = useSidebar()
 
-  const button = (
+  return (
     <Comp
       data-slot="sidebar-menu-button"
       data-sidebar="menu-button"
@@ -515,29 +510,13 @@ function SidebarMenuButton({
       data-active={isActive}
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
       {...props}
+      onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
+        if (state === "collapsed") {
+          setOpen(true)
+        }
+        props.onClick?.(event)
+      }}
     />
-  )
-
-  if (!tooltip) {
-    return button
-  }
-
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    }
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
-    </Tooltip>
   )
 }
 

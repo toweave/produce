@@ -71,7 +71,7 @@ export function NavUser({
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('click: Upgrade to Pro')}>
                 <SparklesIcon
                 />
                 Upgrade to Pro
@@ -79,24 +79,24 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('click: Account')}>
                 <BadgeCheckIcon
                 />
                 Account
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('click: Billing')}>
                 <CreditCardIcon
                 />
                 Billing
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('click: Notifications')}>
                 <BellIcon
                 />
                 Notifications
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => console.log('click: Log out')}>
               <LogOutIcon
               />
               Log out
