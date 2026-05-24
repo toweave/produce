@@ -1,83 +1,203 @@
+"use client"
+
+import * as React from "react"
+
+import { NavMain } from "@/components/nav-main"
+import { NavProjects } from "@/components/nav-projects"
+import { NavUser } from "@/components/nav-user"
+import { TeamSwitcher } from "@/components/team-switcher"
+import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarGroup,
-  SidebarGroupAction,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem
-} from '@/components/ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger
-} from '@/components/ui/dropdown-menu'
-import { ChevronDown, Plus, User2 } from 'lucide-react'
-import React from 'react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+  SidebarRail,
+} from "@/components/ui/sidebar"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
 
-export function AppSidebar(): React.ReactNode {
+// This is sample data.
+const data = {
+  user: {
+    name: "shadcn",
+    email: "m@example.com",
+    avatar: "/avatars/shadcn.jpg",
+  },
+  teams: [
+    {
+      name: "Acme Inc",
+      logo: (
+        <GalleryVerticalEndIcon
+        />
+      ),
+      plan: "Enterprise",
+    },
+    {
+      name: "Acme Corp.",
+      logo: (
+        <AudioLinesIcon
+        />
+      ),
+      plan: "Startup",
+    },
+    {
+      name: "Evil Corp.",
+      logo: (
+        <TerminalIcon
+        />
+      ),
+      plan: "Free",
+    },
+  ],
+  navMain: [
+    {
+      title: "首页",
+      url: "/home",
+      icon: (
+        <HomeIcon
+        />
+      ),
+    },
+    {
+      title: "实验室",
+      url: "/playground",
+      icon: (
+        <TerminalSquareIcon
+        />
+      ),
+      items: [
+        {
+          title: "历史记录",
+          url: "/playground/history",
+        },
+        {
+          title: "星标",
+          url: "/playground/starred",
+        },
+        {
+          title: "设置",
+          url: "/playground/settings",
+        },
+      ],
+    },
+    {
+      title: "模型",
+      url: "/models",
+      icon: (
+        <BotIcon
+        />
+      ),
+      items: [
+        {
+          title: "创世纪",
+          url: "/models/genesis",
+        },
+        {
+          title: "探索者",
+          url: "/models/explorer",
+        },
+        {
+          title: "量子",
+          url: "/models/quantum",
+        },
+      ],
+    },
+    {
+      title: "文档",
+      url: "/docs",
+      icon: (
+        <BookOpenIcon
+        />
+      ),
+      items: [
+        {
+          title: "简介",
+          url: "/docs/introduction",
+        },
+        {
+          title: "快速开始",
+          url: "/docs/get-started",
+        },
+        {
+          title: "教程",
+          url: "/docs/tutorials",
+        },
+        {
+          title: "更新日志",
+          url: "/docs/changelog",
+        },
+      ],
+    },
+    {
+      title: "设置",
+      url: "/settings",
+      icon: (
+        <Settings2Icon
+        />
+      ),
+      items: [
+        {
+          title: "通用",
+          url: "/settings/general",
+        },
+        {
+          title: "团队",
+          url: "/settings/team",
+        },
+        {
+          title: "账单",
+          url: "/settings/billing",
+        },
+        {
+          title: "限额",
+          url: "/settings/limits",
+        },
+      ],
+    },
+  ],
+  projects: [
+    {
+      name: "设计工程",
+      url: "/projects/design-engineering",
+      icon: (
+        <FrameIcon
+        />
+      ),
+    },
+    {
+      name: "销售与市场",
+      url: "/projects/sales-marketing",
+      icon: (
+        <PieChartIcon
+        />
+      ),
+    },
+    {
+      name: "旅行",
+      url: "/projects/travel",
+      icon: (
+        <MapIcon
+        />
+      ),
+    },
+  ],
+}
+
+export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar>
+    <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <SidebarMenuButton>
-                  Select Workspace
-                  <ChevronDown className="ml-auto" />
-                </SidebarMenuButton>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-[--radix-popper-anchor-width]">
-                <DropdownMenuItem>
-                  <span>Acme Inc</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
-
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
-          <SidebarGroupAction>
-            <Plus /> <span className="sr-only">Add Project</span>
-          </SidebarGroupAction>
-          <SidebarGroupContent></SidebarGroupContent>
-        </SidebarGroup>
-        <SidebarGroup />
-
-        <Collapsible defaultOpen className="group/collapsible">
-          <SidebarGroup>
-            <SidebarGroupLabel asChild>
-              <CollapsibleTrigger>
-                Help
-                <ChevronDown className="ml-auto transition-transform group-data-[state=open]/collapsible:rotate-180" />
-              </CollapsibleTrigger>
-            </SidebarGroupLabel>
-            <CollapsibleContent>
-              <SidebarGroupContent />
-            </CollapsibleContent>
-          </SidebarGroup>
-        </Collapsible>
+        <NavMain items={data.navMain} />
+        <NavProjects projects={data.projects} />
       </SidebarContent>
-
       <SidebarFooter>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton>
-              <User2 /> Username
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+        <ThemeToggle />
+        <NavUser user={data.user} />
       </SidebarFooter>
+      <SidebarRail />
     </Sidebar>
   )
 }
