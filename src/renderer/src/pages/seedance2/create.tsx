@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { VideoIcon, UploadIcon, XIcon, Loader2Icon, ImageIcon, FilmIcon, AudioLinesIcon } from 'lucide-react'
+import { VideoIcon, UploadIcon, XIcon, Loader2Icon, ImageIcon, FilmIcon, AudioLinesIcon, SettingsIcon } from 'lucide-react'
+import { handleApiError } from '@/lib/api-errors'
 
 type ModelId = 'doubao-seedance-2-0-260128' | 'doubao-seedance-2-0-fast-260128'
 type Ratio = 'adaptive' | '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9'
@@ -46,6 +47,7 @@ export default function Seedance2CreatePage(): React.JSX.Element {
   const [priority, setPriority] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const [createdId, setCreatedId] = useState('')
 
   const isFast = model === 'doubao-seedance-2-0-fast-260128'
@@ -92,6 +94,7 @@ export default function Seedance2CreatePage(): React.JSX.Element {
     }
 
     setError('')
+    setApiKeyMissing(false)
     setSubmitting(true)
     try {
       const content: Record<string, unknown>[] = []
@@ -131,7 +134,9 @@ export default function Seedance2CreatePage(): React.JSX.Element {
       const result = await window.api.seedance2.createTask(params) as { id: string }
       setCreatedId(result.id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建任务失败')
+      const { message, isMissing } = handleApiError(err, '2.0', '创建任务失败')
+      setError(message)
+      setApiKeyMissing(isMissing)
     } finally {
       setSubmitting(false)
     }
@@ -409,7 +414,16 @@ export default function Seedance2CreatePage(): React.JSX.Element {
         {/* Error */}
         {error && (
           <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-            {error}
+            <p>{error}</p>
+            {apiKeyMissing && (
+              <button
+                onClick={() => navigate('/settings/keys')}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                <SettingsIcon className="h-3 w-3" />
+                前往设置页面配置密钥
+              </button>
+            )}
           </div>
         )}
 

@@ -154,7 +154,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:create-task', async (_event, params) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     const info = extractContentInfo(params as Record<string, unknown>)
     try {
@@ -173,7 +173,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:get-task', async (_event, id: string) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey)
@@ -188,7 +188,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:list-tasks', async (_event, query: string) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks${query}`, apiKey)
@@ -203,7 +203,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:delete-task', async (_event, id: string) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey, {
@@ -309,7 +309,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:create-task', async (_event, params) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     const info = extractContentInfo(params as Record<string, unknown>)
     try {
@@ -328,7 +328,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:get-task', async (_event, id: string) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey)
@@ -343,7 +343,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:list-tasks', async (_event, query: string) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks${query}`, apiKey)
@@ -358,7 +358,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:delete-task', async (_event, id: string) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey, {

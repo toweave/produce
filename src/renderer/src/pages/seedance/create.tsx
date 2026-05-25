@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { VideoIcon, UploadIcon, XIcon, Loader2Icon, CameraIcon, PlayIcon } from 'lucide-react'
+import { VideoIcon, UploadIcon, XIcon, Loader2Icon, CameraIcon, PlayIcon, SettingsIcon } from 'lucide-react'
+import { handleApiError } from '@/lib/api-errors'
 
 type Ratio = '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | 'adaptive'
 type Resolution = '480p' | '720p' | '1080p'
@@ -60,6 +61,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   const [generateAudio, setGenerateAudio] = useState(true)
   const [watermark, setWatermark] = useState(false)
   const [error, setError] = useState('')
+  const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
   // Storage state
@@ -379,6 +381,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       return
     }
     setError('')
+    setApiKeyMissing(false)
     setSubmitting(true)
     setTaskStatus('')
     setVideoUrl('')
@@ -416,7 +419,9 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       setTaskStatus('queued')
       pollTask(result.id)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '创建任务失败')
+      const { message, isMissing } = handleApiError(err, '1.5', '创建任务失败')
+      setError(message)
+      setApiKeyMissing(isMissing)
     } finally {
       setSubmitting(false)
     }
@@ -798,7 +803,18 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
         {/* Error */}
         {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">{error}</div>
+          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+            <p>{error}</p>
+            {apiKeyMissing && (
+              <button
+                onClick={() => navigate('/settings/keys')}
+                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                <SettingsIcon className="h-3 w-3" />
+                前往设置页面配置密钥
+              </button>
+            )}
+          </div>
         )}
 
         {/* Submit */}

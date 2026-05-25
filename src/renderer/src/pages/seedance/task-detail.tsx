@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeftIcon, Loader2Icon, Trash2Icon, ExternalLinkIcon } from 'lucide-react'
+import { ArrowLeftIcon, Loader2Icon, Trash2Icon, ExternalLinkIcon, SettingsIcon } from 'lucide-react'
+import { handleApiError } from '@/lib/api-errors'
 
 interface TaskDetail {
   id: string
@@ -50,6 +51,7 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
   const [task, setTask] = useState<TaskDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const fetchTask = useCallback(async (): Promise<void> => {
@@ -59,7 +61,9 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
       setTask(result)
       setError('')
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取任务详情失败')
+      const { message, isMissing } = handleApiError(err, '1.5', '获取任务详情失败')
+      setError(message)
+      setApiKeyMissing(isMissing)
     } finally {
       setLoading(false)
     }
@@ -103,7 +107,16 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
           <ArrowLeftIcon className="h-4 w-4" /> 返回任务列表
         </button>
         <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
-          {error || '任务不存在'}
+          <p>{error || '任务不存在'}</p>
+          {apiKeyMissing && (
+            <button
+              onClick={() => navigate('/settings/keys')}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <SettingsIcon className="h-3 w-3" />
+              前往设置页面配置密钥
+            </button>
+          )}
         </div>
       </div>
     )

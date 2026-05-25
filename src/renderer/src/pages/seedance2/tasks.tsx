@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ListTodoIcon, RefreshCwIcon, Trash2Icon, EyeIcon, Loader2Icon } from 'lucide-react'
+import { ListTodoIcon, RefreshCwIcon, Trash2Icon, EyeIcon, Loader2Icon, SettingsIcon } from 'lucide-react'
+import { handleApiError } from '@/lib/api-errors'
 
 interface TaskItem {
   id: string
@@ -54,11 +55,13 @@ export default function Seedance2TasksPage(): React.JSX.Element {
   const [statusFilter, setStatusFilter] = useState('')
   const [page, setPage] = useState(1)
   const [error, setError] = useState('')
+  const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const pageSize = 20
 
   const fetchTasks = useCallback(async (): Promise<void> => {
     setLoading(true)
     setError('')
+    setApiKeyMissing(false)
     try {
       const params = new URLSearchParams()
       params.set('page_size', String(pageSize))
@@ -70,7 +73,9 @@ export default function Seedance2TasksPage(): React.JSX.Element {
       setTasks(result.items || [])
       setTotal(result.total || 0)
     } catch (err) {
-      setError(err instanceof Error ? err.message : '获取任务列表失败')
+      const { message, isMissing } = handleApiError(err, '2.0', '获取任务列表失败')
+      setError(message)
+      setApiKeyMissing(isMissing)
     } finally {
       setLoading(false)
     }
@@ -127,7 +132,16 @@ export default function Seedance2TasksPage(): React.JSX.Element {
 
       {error && (
         <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-4">
-          {error}
+          <p>{error}</p>
+          {apiKeyMissing && (
+            <button
+              onClick={() => navigate('/settings/keys')}
+              className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              <SettingsIcon className="h-3 w-3" />
+              前往设置页面配置密钥
+            </button>
+          )}
         </div>
       )}
 
