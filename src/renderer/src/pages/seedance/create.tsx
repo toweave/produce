@@ -53,8 +53,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   // Form state
   const [prompt, setPrompt] = useState('')
   const [imageData, setImageData] = useState<string | null>(null)
+  const [firstFramePath, setFirstFramePath] = useState('')
   const [useLastFrame, setUseLastFrame] = useState(true)
   const [lastFrameData, setLastFrameData] = useState<string | null>(null)
+  const [lastFramePath, setLastFramePath] = useState('')
   const [ratio, setRatio] = useState<Ratio>('16:9')
   const [duration, setDuration] = useState(-1)
   const [resolution, setResolution] = useState<Resolution>('1080p')
@@ -113,6 +115,8 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         if (saved.imageData) setImageData(saved.imageData)
         if (saved.lastFrameData) setLastFrameData(saved.lastFrameData)
         if (saved.useLastFrame !== undefined) setUseLastFrame(saved.useLastFrame)
+        if (saved.firstFramePath) setFirstFramePath(saved.firstFramePath)
+        if (saved.lastFramePath) setLastFramePath(saved.lastFramePath)
       }
     } catch {
       // Ignore corrupted data
@@ -125,7 +129,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => {
       try {
-        const data = { prompt, ratio, duration, resolution, generateAudio, watermark, useLastFrame }
+        const data = { prompt, ratio, duration, resolution, generateAudio, watermark, useLastFrame, firstFramePath, lastFramePath }
         // Only save image data if not too large
         if (imageData && imageData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).imageData = imageData
         if (lastFrameData && lastFrameData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).lastFrameData = lastFrameData
@@ -137,7 +141,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
-  }, [prompt, ratio, duration, resolution, generateAudio, watermark, imageData, lastFrameData, useLastFrame])
+  }, [prompt, ratio, duration, resolution, generateAudio, watermark, imageData, lastFrameData, useLastFrame, firstFramePath, lastFramePath])
 
   useEffect(() => {
     const initStorage = async (): Promise<void> => {
@@ -306,6 +310,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     if (!filePath) return
     const base64 = await window.api.file.readBase64(filePath)
     setImageData(base64)
+    setFirstFramePath(filePath)
   }
 
   const handleSelectLastFrame = async (): Promise<void> => {
@@ -313,6 +318,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     if (!filePath) return
     const base64 = await window.api.file.readBase64(filePath)
     setLastFrameData(base64)
+    setLastFramePath(filePath)
   }
 
   // Task polling
@@ -418,6 +424,34 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       setCreatedId(result.id)
       setTaskStatus('queued')
       pollTask(result.id)
+
+      // Save all task params including reference image paths
+      try {
+        const relativeFirstPath = firstFramePath && currentDir
+          ? await window.api.path.relative(currentDir, firstFramePath)
+          : null
+        const relativeLastPath = lastFramePath && currentDir
+          ? await window.api.path.relative(currentDir, lastFramePath)
+          : null
+        await window.api.taskParams.save({
+          task_id: result.id,
+          version: '1.5',
+          prompt: prompt.trim(),
+          ratio,
+          duration: duration > 0 ? duration : null,
+          resolution,
+          generate_audio: generateAudio ? 1 : 0,
+          watermark: watermark ? 1 : 0,
+          model: 'doubao-seedance-1-5-pro-251215',
+          first_frame_path: relativeFirstPath,
+          last_frame_path: relativeLastPath,
+          first_frame_data: imageData || null,
+          last_frame_data: lastFrameData || null,
+          full_params: JSON.stringify(params)
+        })
+      } catch {
+        console.error('Failed to save task params')
+      }
     } catch (err) {
       const { message, isMissing } = handleApiError(err, '1.5', '创建任务失败')
       setError(message)
@@ -674,6 +708,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                     onClick={(e) => {
                       e.stopPropagation()
                       setImageData(null)
+                      setFirstFramePath('')
                     }}
                     className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-0.5"
                   >

@@ -20,6 +20,48 @@ interface FileAPI {
   readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
   readKeyframes: (opts: { dir: string; taskId: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
   deleteFile: (filePath: string) => Promise<void>
+  resolveImagePath: (opts: { storageDir: string; relativePath: string }) => Promise<string | null>
+}
+
+interface TaskParamsAPI {
+  save: (entry: {
+    task_id: string
+    version: string
+    prompt: string | null
+    ratio: string | null
+    duration: number | null
+    resolution: string | null
+    generate_audio: number
+    watermark: number
+    model: string | null
+    first_frame_path: string | null
+    last_frame_path: string | null
+    first_frame_data: string | null
+    last_frame_data: string | null
+    full_params: string | null
+  }) => Promise<void>
+  getByTaskId: (taskId: string) => Promise<{
+    id: number
+    task_id: string
+    version: string
+    prompt: string | null
+    ratio: string | null
+    duration: number | null
+    resolution: string | null
+    generate_audio: number
+    watermark: number
+    model: string | null
+    first_frame_path: string | null
+    last_frame_path: string | null
+    first_frame_data: string | null
+    last_frame_data: string | null
+    full_params: string | null
+    created_at: string
+  } | null>
+}
+
+interface PathAPI {
+  relative: (from: string, to: string) => Promise<string>
 }
 
 interface LogEntry {
@@ -53,6 +95,7 @@ interface LogQueryResult {
 
 interface LogsAPI {
   query: (options: LogQueryOptions) => Promise<LogQueryResult>
+  getTaskLog: (taskId: string) => Promise<LogEntry | null>
 }
 
 interface SettingsData {
@@ -77,6 +120,8 @@ declare global {
       file: FileAPI
       logs: LogsAPI
       settings: SettingsAPI
+      taskParams: TaskParamsAPI
+      path: PathAPI
     }
   }
 }

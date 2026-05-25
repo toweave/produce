@@ -1,10 +1,10 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join } from 'path'
-import { readFile, writeFile, mkdir, unlink } from 'fs/promises'
+import { join, relative, resolve } from 'path'
+import { readFile, writeFile, mkdir, unlink, access } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { initDatabase, insertLog, queryLogs } from './database'
+import { initDatabase, insertLog, queryLogs, queryLogByTaskId, insertTaskParams, getTaskParamsByTaskId } from './database'
 
 const ARK_API_BASE = 'https://ark.cn-beijing.volces.com/api/v3'
 
@@ -375,6 +375,38 @@ app.whenReady().then(() => {
   // --- Logs query IPC handler ---
   ipcMain.handle('logs:query', async (_event, options) => {
     return queryLogs(options)
+  })
+
+  ipcMain.handle('logs:get-task-log', async (_event, taskId: string) => {
+    return queryLogByTaskId(taskId)
+  })
+
+  // --- Path utility IPC handler ---
+  ipcMain.handle('path:relative', async (_event, from: string, to: string) => {
+    return relative(from, to)
+  })
+
+  // --- Task params IPC handlers ---
+  ipcMain.handle('task-params:save', async (_event, entry) => {
+    insertTaskParams(entry)
+  })
+
+  ipcMain.handle('task-params:get-by-task-id', async (_event, taskId: string) => {
+    return getTaskParamsByTaskId(taskId)
+  })
+
+  // --- Resolve image path: storageDir + relativePath -> read file -> return base64 ---
+  ipcMain.handle('file:resolve-image-path', async (_event, { storageDir, relativePath }: { storageDir: string; relativePath: string }) => {
+    const absolutePath = resolve(storageDir, relativePath)
+    try {
+      await access(absolutePath)
+    } catch {
+      return null
+    }
+    const buffer = await readFile(absolutePath)
+    const ext = absolutePath.split('.').pop()?.toLowerCase() || 'png'
+    const mime = MIME_MAP[ext] || `image/${ext}`
+    return `data:${mime};base64,${buffer.toString('base64')}`
   })
 
   app.on('activate', function () {

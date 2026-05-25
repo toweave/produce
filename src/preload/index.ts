@@ -26,14 +26,23 @@ const api = {
     saveKeyframe: (opts) => ipcRenderer.invoke('file:save-keyframe', opts),
     readFileBuffer: (filePath) => ipcRenderer.invoke('file:read-file-buffer', filePath),
     readKeyframes: (opts) => ipcRenderer.invoke('file:read-keyframes', opts),
-    deleteFile: (filePath) => ipcRenderer.invoke('file:delete-file', filePath)
+    deleteFile: (filePath) => ipcRenderer.invoke('file:delete-file', filePath),
+    resolveImagePath: (opts) => ipcRenderer.invoke('file:resolve-image-path', opts)
   },
   logs: {
-    query: (options) => ipcRenderer.invoke('logs:query', options)
+    query: (options) => ipcRenderer.invoke('logs:query', options),
+    getTaskLog: (taskId) => ipcRenderer.invoke('logs:get-task-log', taskId)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
     set: (partial) => ipcRenderer.invoke('settings:set', partial)
+  },
+  taskParams: {
+    save: (entry) => ipcRenderer.invoke('task-params:save', entry),
+    getByTaskId: (taskId) => ipcRenderer.invoke('task-params:get-by-task-id', taskId)
+  },
+  path: {
+    relative: (from, to) => ipcRenderer.invoke('path:relative', from, to)
   }
 }
 
