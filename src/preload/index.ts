@@ -15,6 +15,9 @@ const api = {
     listTasks: (query) => ipcRenderer.invoke('seedance2:list-tasks', query),
     deleteTask: (id) => ipcRenderer.invoke('seedance2:delete-task', id)
   },
+  seedream: {
+    generateImage: (params) => ipcRenderer.invoke('seedream:generate-image', params)
+  },
   dialog: {
     openFile: (filters) => ipcRenderer.invoke('dialog:open-file', filters),
     selectDirectory: () => ipcRenderer.invoke('dialog:select-directory')

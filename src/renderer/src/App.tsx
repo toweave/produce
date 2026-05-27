@@ -9,6 +9,9 @@ import SeedanceTaskDetailPage from '@/pages/seedance/task-detail'
 import Seedance2CreatePage from '@/pages/seedance2/create'
 import Seedance2TasksPage from '@/pages/seedance2/tasks'
 import Seedance2TaskDetailPage from '@/pages/seedance2/task-detail'
+import SeedreamCreatePage from '@/pages/seedream/create'
+import SeedreamTasksPage from '@/pages/seedream/tasks'
+import SeedreamLogsPage from '@/pages/seedream/logs'
 import LogsViewer from '@/pages/logs-viewer'
 import SettingsKeysPage from '@/pages/settings-keys'
 
@@ -42,6 +45,9 @@ function App(): React.JSX.Element {
         <Route path="/seedance2/tasks/:id" element={<Seedance2TaskDetailPage />} />
         <Route path="/seedance/logs" element={<LogsViewer defaultVersion="1.5" />} />
         <Route path="/seedance2/logs" element={<LogsViewer defaultVersion="2.0" />} />
+        <Route path="/seedream/create" element={<SeedreamCreatePage />} />
+        <Route path="/seedream/tasks" element={<SeedreamTasksPage />} />
+        <Route path="/seedream/logs" element={<SeedreamLogsPage />} />
         <Route path="/settings/keys" element={<SettingsKeysPage />} />
         <Route path="*" element={<HomePage />} />
       </Route>

@@ -7,6 +7,10 @@ interface SeedanceAPI {
   deleteTask: (id: string) => Promise<unknown>
 }
 
+interface SeedreamAPI {
+  generateImage: (params: unknown) => Promise<unknown>
+}
+
 interface DialogAPI {
   openFile: (filters?: Electron.FileFilter[]) => Promise<string | null>
   selectDirectory: () => Promise<string | null>
@@ -101,6 +105,7 @@ interface LogsAPI {
 interface SettingsData {
   seedance15Key: string
   seedance20Key: string
+  seedream50Key: string
   userInfo: { name: string; email: string }
   theme: string
 }
@@ -116,6 +121,7 @@ declare global {
     api: {
       seedance: SeedanceAPI
       seedance2: SeedanceAPI
+      seedream: SeedreamAPI
       dialog: DialogAPI
       file: FileAPI
       logs: LogsAPI

@@ -66,8 +66,8 @@ export default function Layout(): React.ReactNode {
 
       <SidebarInset className="h-svh">
         <Header />
-        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 pt-0">
-          <main className="flex flex-col gap-4">
+        <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
+          <main className="flex flex-col">
             <Outlet />
           </main>
         </div>

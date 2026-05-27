@@ -13,6 +13,7 @@ const SETTINGS_PATH = join(app.getPath('userData'), 'settings.json')
 const DEFAULT_SETTINGS = {
   seedance15Key: process.env['VITE_SEE_DANCE_15_KEY'] || process.env['VITE_SEE_DANCE_API_KEY'] || '',
   seedance20Key: process.env['VITE_SEE_DANCE_20_KEY'] || process.env['VITE_SEE_DANCE_API_KEY'] || '',
+  seedream50Key: process.env['VITE_SEE_DREAM_50_KEY'] || '',
   userInfo: { name: '用户', email: 'user@example.com' },
   theme: 'system'
 }
@@ -39,9 +40,10 @@ async function saveSettings(partial: Partial<Settings>): Promise<Settings> {
   return cachedSettings
 }
 
-function getApiKey(version: '1.5' | '2.0'): string {
+function getApiKey(version: '1.5' | '2.0' | '5.0'): string {
   if (version === '1.5') return cachedSettings.seedance15Key
-  return cachedSettings.seedance20Key
+  if (version === '2.0') return cachedSettings.seedance20Key
+  return cachedSettings.seedream50Key
 }
 
 const MIME_MAP: Record<string, string> = {
@@ -148,6 +150,27 @@ app.whenReady().then(() => {
 
   ipcMain.handle('settings:set', async (_event, partial: Partial<Settings>) => {
     return saveSettings(partial)
+  })
+
+  // --- Seedream 5.0 IPC handlers ---
+  ipcMain.handle('seedream:generate-image', async (_event, params) => {
+    const apiKey = getApiKey('5.0')
+    if (!apiKey) {
+      throw new Error('Seedream-5.0 API key is not configured. Please go to Settings > Keys to set it up.')
+    }
+    const prompt = String((params as Record<string, unknown>).prompt || '').slice(0, 200)
+    const imageCount = Array.isArray((params as Record<string, unknown>).image) ? ((params as Record<string, unknown>).image as unknown[]).length : (params as Record<string, unknown>).image ? 1 : 0
+    try {
+      const result = await arkFetch('/images/generations', apiKey, {
+        method: 'POST',
+        body: JSON.stringify(params)
+      })
+      insertLog({ version: '5.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt, status: 'succeeded', image_count: imageCount, video_count: 0, audio_count: 0, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '5.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt, status: 'failed', image_count: imageCount, video_count: 0, audio_count: 0, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
   })
 
   // --- Seedance 1.5 IPC handlers ---

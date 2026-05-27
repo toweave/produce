@@ -14,7 +14,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, VideoIcon } from "lucide-react"
+import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, VideoIcon, ImageIcon } from "lucide-react"
 
 // This is sample data.
 const data = {
@@ -190,6 +190,28 @@ const data = {
         {
           title: "操作日志",
           url: "/seedance2/logs",
+        },
+      ],
+    },
+    {
+      title: "Seedream-5.0",
+      url: "/seedream",
+      icon: (
+        <ImageIcon
+        />
+      ),
+      items: [
+        {
+          title: "图片创作",
+          url: "/seedream/create",
+        },
+        {
+          title: "图片列表",
+          url: "/seedream/tasks",
+        },
+        {
+          title: "操作日志",
+          url: "/seedream/logs",
         },
       ],
     },

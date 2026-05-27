@@ -70,8 +70,8 @@ export default function LogsViewer({ defaultVersion }: Props): React.JSX.Element
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
-    <div className="p-6 w-full">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-8 w-full">
+      <div className="flex items-center justify-between space-y-4">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <HistoryIcon className="h-6 w-6" />
           操作日志

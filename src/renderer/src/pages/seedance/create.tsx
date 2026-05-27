@@ -650,9 +650,9 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   const showKeyframeBtn = isHovering || (!isPlaying && !!videoUrl)
 
   return (
-    <div className="flex w-full h-full gap-6">
+    <div className="flex w-full h-full p-4">
       {/* ===== Left Panel ===== */}
-      <div className="p-4 w-1/2 space-y-5 overflow-y-auto">
+      <div className="p-4 w-1/2 space-y-4 overflow-y-auto">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <VideoIcon className="h-6 w-6" />
@@ -883,7 +883,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       </div>
 
       {/* ===== Right Panel ===== */}
-      <div className="p-4 w-1/2 flex flex-col gap-4">
+      <div className="p-4 w-1/2 flex flex-col space-y-4">
         {/* Top half: Video Player */}
         <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden flex flex-col relative min-h-[240px]">
           {!videoUrl && !pollError && (

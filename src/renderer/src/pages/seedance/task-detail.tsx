@@ -206,7 +206,7 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center p-8">
         <Loader2Icon className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
@@ -214,11 +214,14 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
 
   if (error || !task) {
     return (
-      <div className="p-6 w-full">
-        <button onClick={() => navigate('/seedance/tasks')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+      <div className="p-8 w-full">
+        <button
+          onClick={() => navigate('/seedance/tasks')}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+        >
           <ArrowLeftIcon className="h-4 w-4" /> 返回任务列表
         </button>
-        <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+        <div className="rounded-md bg-destructive/10 space-y-4 text-sm text-destructive">
           <p>{error || '任务不存在'}</p>
           {apiKeyMissing && (
             <button
@@ -236,18 +239,23 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
   const isTerminal = ['succeeded', 'failed', 'cancelled', 'expired'].includes(task.status)
 
   return (
-    <div className="p-6 w-full max-w-5xl">
-      <button onClick={() => navigate('/seedance/tasks')} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
+    <div className="p-8 w-full space-y-4">
+      <button
+        onClick={() => navigate('/seedance/tasks')}
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
         <ArrowLeftIcon className="h-4 w-4" /> 返回任务列表
       </button>
 
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex items-center justify-between">
+        <div className="flex flex-row items-end">
           <h1 className="text-xl font-bold">任务详情</h1>
-          <p className="text-xs font-mono text-muted-foreground mt-0.5">{task.id}</p>
+          <p className="ml-4 text-xs font-mono text-muted-foreground mt-0.5">{task.id}</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${STATUS_BADGE[task.status] || ''}`}>
+        <div className="flex items-center">
+          <span
+            className={`mr-4 inline-flex rounded-full px-4 py-2 text-xs font-medium ${STATUS_BADGE[task.status] || ''}`}
+          >
             {STATUS_LABEL[task.status] || task.status}
           </span>
           {['queued', 'succeeded', 'failed', 'expired'].includes(task.status) && (
@@ -263,11 +271,14 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex gap-4">
         <div className="flex-1 min-w-0">
           {task.status === 'succeeded' && videoUrl ? (
             <>
-              <div className="rounded-lg overflow-hidden bg-black mb-4" style={{ maxHeight: '480px' }}>
+              <div
+                className="rounded-lg overflow-hidden bg-black mb-4"
+                style={{ maxHeight: '480px' }}
+              >
                 <VideoPlayer
                   videoUrl={videoUrl}
                   taskId={task.id}
@@ -318,26 +329,36 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
               <p className="text-xs font-medium text-muted-foreground mb-3">参考图片</p>
               <div className="flex gap-3">
                 {firstFrameDisplay && (
-                  <div className="relative group cursor-pointer" onClick={() => setZoomImage(firstFrameDisplay)}>
+                  <div
+                    className="relative group cursor-pointer"
+                    onClick={() => setZoomImage(firstFrameDisplay)}
+                  >
                     <img
                       src={firstFrameDisplay}
                       alt="首帧"
                       className="h-24 w-auto rounded border border-border object-cover"
                     />
-                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">首帧</span>
+                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                      首帧
+                    </span>
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
                       <span className="text-xs text-white">点击放大</span>
                     </div>
                   </div>
                 )}
                 {lastFrameDisplay && (
-                  <div className="relative group cursor-pointer" onClick={() => setZoomImage(lastFrameDisplay)}>
+                  <div
+                    className="relative group cursor-pointer"
+                    onClick={() => setZoomImage(lastFrameDisplay)}
+                  >
                     <img
                       src={lastFrameDisplay}
                       alt="尾帧"
                       className="h-24 w-auto rounded border border-border object-cover"
                     />
-                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">尾帧</span>
+                    <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+                      尾帧
+                    </span>
                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
                       <span className="text-xs text-white">点击放大</span>
                     </div>
@@ -362,17 +383,38 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             <p className="text-xs font-medium text-muted-foreground mb-2">基本信息</p>
             <InfoItem label="模型" value={task.model} />
-            <InfoItem label="创建时间" value={task.created_at ? new Date(task.created_at * 1000).toLocaleString('zh-CN') : '-'} />
-            <InfoItem label="更新时间" value={task.updated_at ? new Date(task.updated_at * 1000).toLocaleString('zh-CN') : '-'} />
+            <InfoItem
+              label="创建时间"
+              value={
+                task.created_at ? new Date(task.created_at * 1000).toLocaleString('zh-CN') : '-'
+              }
+            />
+            <InfoItem
+              label="更新时间"
+              value={
+                task.updated_at ? new Date(task.updated_at * 1000).toLocaleString('zh-CN') : '-'
+              }
+            />
             <InfoItem label="宽高比" value={task.ratio || '-'} />
             <InfoItem label="分辨率" value={task.resolution || '-'} />
             <InfoItem label="时长" value={task.duration ? `${task.duration} 秒` : '-'} />
-            <InfoItem label="帧率" value={task.framespersecond ? `${task.framespersecond} fps` : '-'} />
-            <InfoItem label="音频" value={task.generate_audio === undefined ? '-' : task.generate_audio ? '有声' : '无声'} />
+            <InfoItem
+              label="帧率"
+              value={task.framespersecond ? `${task.framespersecond} fps` : '-'}
+            />
+            <InfoItem
+              label="音频"
+              value={
+                task.generate_audio === undefined ? '-' : task.generate_audio ? '有声' : '无声'
+              }
+            />
             <InfoItem label="服务等级" value={task.service_tier || '-'} />
             {task.seed !== undefined && <InfoItem label="种子" value={String(task.seed)} />}
             {task.usage && (
-              <InfoItem label="Token 消耗" value={String(task.usage.completion_tokens || task.usage.total_tokens || '-')} />
+              <InfoItem
+                label="Token 消耗"
+                value={String(task.usage.completion_tokens || task.usage.total_tokens || '-')}
+              />
             )}
           </div>
         </div>

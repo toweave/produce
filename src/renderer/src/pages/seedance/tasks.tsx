@@ -252,9 +252,9 @@ export default function SeedanceTasksPage(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="p-6 w-full h-full flex gap-4">
+    <div className="p-4 w-full h-full flex">
       {/* ===== Left: Task List (2/3) ===== */}
-      <div className="w-2/3 min-w-0 flex flex-col">
+      <div className="p-4 w-2/3 min-w-0 flex flex-col">
         <div className="flex items-center justify-between mb-4">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <ListTodoIcon className="h-6 w-6" />
@@ -275,7 +275,13 @@ export default function SeedanceTasksPage(): React.JSX.Element {
           {STATUS_OPTIONS.map((opt) => (
             <button
               key={opt.value}
-              onClick={() => { setStatusFilter(opt.value); setPage(1); setSelectedId(null); setSelectedTask(null); setVideoUrl('') }}
+              onClick={() => {
+                setStatusFilter(opt.value)
+                setPage(1)
+                setSelectedId(null)
+                setSelectedTask(null)
+                setVideoUrl('')
+              }}
               className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
                 statusFilter === opt.value
                   ? 'bg-primary text-primary-foreground'
@@ -310,7 +316,9 @@ export default function SeedanceTasksPage(): React.JSX.Element {
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">任务 ID</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">状态</th>
                 <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">模型</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">创建时间</th>
+                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                  创建时间
+                </th>
                 <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">操作</th>
               </tr>
             </thead>
@@ -351,13 +359,17 @@ export default function SeedanceTasksPage(): React.JSX.Element {
                       </button>
                     </td>
                     <td className="px-4 py-2.5">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status] || 'bg-gray-100'}`}>
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status] || 'bg-gray-100'}`}
+                      >
                         {STATUS_LABEL[task.status] || task.status}
                       </span>
                     </td>
                     <td className="px-4 py-2.5 text-xs">{task.model}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                      {task.created_at ? new Date(task.created_at * 1000).toLocaleString('zh-CN') : '-'}
+                      {task.created_at
+                        ? new Date(task.created_at * 1000).toLocaleString('zh-CN')
+                        : '-'}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="inline-flex gap-1">
@@ -417,7 +429,7 @@ export default function SeedanceTasksPage(): React.JSX.Element {
       </div>
 
       {/* ===== Right: Preview Panel (1/3) ===== */}
-      <div className="w-1/3 min-w-0 flex flex-col gap-4">
+      <div className="p-4 w-1/3 min-w-0 flex flex-col space-y-4 ">
         {/* Top: Video Preview */}
         <div className="rounded-lg border border-border bg-card overflow-hidden flex-1 min-h-[200px] flex flex-col">
           {!selectedId ? (
@@ -515,7 +527,9 @@ export default function SeedanceTasksPage(): React.JSX.Element {
                           alt="首帧"
                           className="h-16 w-auto rounded border border-border object-cover"
                         />
-                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">首帧</span>
+                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                          首帧
+                        </span>
                       </div>
                     )}
                     {lastFrameDisplay && (
@@ -525,7 +539,9 @@ export default function SeedanceTasksPage(): React.JSX.Element {
                           alt="尾帧"
                           className="h-16 w-auto rounded border border-border object-cover"
                         />
-                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">尾帧</span>
+                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                          尾帧
+                        </span>
                       </div>
                     )}
                   </div>
@@ -535,25 +551,43 @@ export default function SeedanceTasksPage(): React.JSX.Element {
               {/* Basic Info */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 border-t border-border">
                 <InfoRow label="任务 ID" value={selectedTask?.id || ''} mono />
-                <InfoRow label="状态" value={STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status || ''} />
+                <InfoRow
+                  label="状态"
+                  value={STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status || ''}
+                />
                 <InfoRow label="模型" value={selectedTask?.model || ''} />
                 <InfoRow label="宽高比" value={selectedTask?.ratio || '-'} />
                 <InfoRow label="分辨率" value={selectedTask?.resolution || '-'} />
-                <InfoRow label="时长" value={selectedTask?.duration ? `${selectedTask.duration} 秒` : '-'} />
+                <InfoRow
+                  label="时长"
+                  value={selectedTask?.duration ? `${selectedTask.duration} 秒` : '-'}
+                />
                 <InfoRow
                   label="音频"
-                  value={selectedTask?.generate_audio === undefined ? '-' : selectedTask.generate_audio ? '有声' : '无声'}
+                  value={
+                    selectedTask?.generate_audio === undefined
+                      ? '-'
+                      : selectedTask.generate_audio
+                        ? '有声'
+                        : '无声'
+                  }
                 />
                 <InfoRow
                   label="创建时间"
-                  value={selectedTask?.created_at ? new Date(selectedTask.created_at * 1000).toLocaleString('zh-CN') : '-'}
+                  value={
+                    selectedTask?.created_at
+                      ? new Date(selectedTask.created_at * 1000).toLocaleString('zh-CN')
+                      : '-'
+                  }
                 />
               </div>
 
               {/* Error info */}
               {selectedTask?.status === 'failed' && selectedTask?.error && (
                 <div className="rounded-md bg-destructive/10 p-2.5">
-                  <p className="text-xs font-medium text-destructive">错误：{selectedTask.error.code}</p>
+                  <p className="text-xs font-medium text-destructive">
+                    错误：{selectedTask.error.code}
+                  </p>
                   <p className="text-xs text-destructive/80 mt-0.5">{selectedTask.error.message}</p>
                 </div>
               )}
