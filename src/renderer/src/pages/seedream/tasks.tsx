@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { ListTodoIcon, RefreshCwIcon, EyeIcon, Loader2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
+import { ListTodoIcon, RefreshCwIcon, Loader2Icon, ChevronDownIcon, ChevronUpIcon } from 'lucide-react'
 
 const STATUS_OPTIONS = [
   { value: '', label: '全部' },
@@ -101,12 +101,16 @@ export default function SeedreamTasksPage(): React.JSX.Element {
   }
 
   const renderParams = (params: Record<string, unknown>): React.JSX.Element => {
+    const s = params.size as string | undefined
+    const fmt = params.output_format as string | undefined
+    const seq = params.sequential_image_generation as string | undefined
+    const wm = params.watermark as boolean | undefined
     return (
       <div className="space-y-1 text-xs">
-        {params.size && <div><span className="text-muted-foreground">尺寸: </span>{params.size as string}</div>}
-        {params.output_format && <div><span className="text-muted-foreground">格式: </span>{params.output_format as string}</div>}
-        {params.sequential_image_generation && <div><span className="text-muted-foreground">组图模式: </span>{params.sequential_image_generation === 'auto' ? '开启' : '关闭'}</div>}
-        {params.watermark !== undefined && <div><span className="text-muted-foreground">水印: </span>{params.watermark ? '开启' : '关闭'}</div>}
+        {s && <div><span className="text-muted-foreground">尺寸: </span>{s}</div>}
+        {fmt && <div><span className="text-muted-foreground">格式: </span>{fmt}</div>}
+        {seq && <div><span className="text-muted-foreground">组图模式: </span>{seq === 'auto' ? '开启' : '关闭'}</div>}
+        {wm !== undefined && <div><span className="text-muted-foreground">水印: </span>{wm ? '开启' : '关闭'}</div>}
       </div>
     )
   }

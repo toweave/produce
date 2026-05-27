@@ -1,6 +1,13 @@
 import React, { useState } from 'react'
-import { ImageIcon, UploadIcon, XIcon, Loader2Icon, SettingsIcon, DownloadIcon, SearchIcon } from 'lucide-react'
+import { ImageIcon, UploadIcon, XIcon, Loader2Icon, SettingsIcon, SearchIcon } from 'lucide-react'
 import { handleApiError } from '@/lib/api-errors'
+import { cn } from '@/lib/utils'
+import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 
 type Resolution = '2K' | '3K' | '4K'
 type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3' | '21:9'
@@ -123,7 +130,7 @@ export default function SeedreamCreatePage(): React.JSX.Element {
     <div className="p-6 w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
-          <ImageIcon className="h-6 w-6" />
+          <ImageIcon className="size-6" />
           图片创作
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -136,7 +143,7 @@ export default function SeedreamCreatePage(): React.JSX.Element {
           <p>{error}</p>
           {apiKeyMissing && (
             <a href="/settings/keys" className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              <SettingsIcon className="h-3 w-3" />
+              <SettingsIcon className="size-3" />
               前往设置页面配置密钥
             </a>
           )}
@@ -145,31 +152,30 @@ export default function SeedreamCreatePage(): React.JSX.Element {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Input Area */}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4">
           {/* Prompt */}
-          <div>
-            <textarea
+          <Field orientation="vertical">
+            <Textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="描述你想要生成的图片内容，例如：一只可爱的橘猫坐在窗台上，阳光洒在它身上，温馨的室内场景"
               rows={4}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <FieldDescription>
               建议不超过 300 个汉字或 600 个英文单词
-            </p>
-          </div>
+            </FieldDescription>
+          </Field>
 
           {/* Reference Images */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium">参考图片（{images.length}/{maxRefImages}）</label>
+          <Field orientation="vertical">
+            <div className="flex items-center justify-between">
+              <FieldLabel>参考图片（{images.length}/{maxRefImages}）</FieldLabel>
               <button
                 onClick={handleAddImage}
                 disabled={images.length >= maxRefImages}
                 className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50"
               >
-                <UploadIcon className="h-3 w-3" />
+                <UploadIcon className="size-3" />
                 上传图片
               </button>
             </div>
@@ -182,7 +188,7 @@ export default function SeedreamCreatePage(): React.JSX.Element {
                       onClick={() => handleRemoveImage(img.id)}
                       className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <XIcon className="h-3 w-3" />
+                      <XIcon className="size-3" />
                     </button>
                     <p className="absolute bottom-0 left-0 right-0 truncate bg-black/50 px-1 py-0.5 text-[10px] text-white">
                       {img.name}
@@ -195,148 +201,107 @@ export default function SeedreamCreatePage(): React.JSX.Element {
                 上传参考图片进行图文生图或多图融合（可选）
               </p>
             )}
-          </div>
+          </Field>
 
-          {/* Parameters */}
-          <div className="space-y-3">
-            {/* Resolution */}
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">分辨率</label>
-              <div className="flex gap-1">
-                {(['2K', '3K', '4K'] as Resolution[]).map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setResolution(r)}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      resolution === r ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <Separator />
 
-            {/* Aspect Ratio */}
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">宽高比</label>
-              <div className="flex gap-1 flex-wrap">
-                {ASPECT_RATIOS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => setAspectRatio(r)}
-                    className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                      aspectRatio === r ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                输出尺寸: {RESOLUTION_SIZE[resolution][aspectRatio]}
-              </p>
-            </div>
+          {/* Resolution */}
+          <Field orientation="vertical">
+            <FieldLabel>分辨率</FieldLabel>
+            <ToggleGroup
+              type="single"
+              value={resolution}
+              onValueChange={(v) => v && setResolution(v as Resolution)}
+              variant="outline"
+              size="sm"
+            >
+              <ToggleGroupItem value="2K">2K</ToggleGroupItem>
+              <ToggleGroupItem value="3K">3K</ToggleGroupItem>
+              <ToggleGroupItem value="4K">4K</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
 
-            {/* Output Format */}
-            <div>
-              <label className="block text-xs text-muted-foreground mb-1">输出格式</label>
-              <div className="flex gap-1">
-                {(['png', 'jpeg'] as OutputFormat[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setOutputFormat(f)}
-                    className={`flex-1 rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-                      outputFormat === f ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                    }`}
-                  >
-                    {f.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Aspect Ratio */}
+          <Field orientation="vertical">
+            <FieldLabel>宽高比</FieldLabel>
+            <ToggleGroup
+              type="single"
+              value={aspectRatio}
+              onValueChange={(v) => v && setAspectRatio(v as AspectRatio)}
+              variant="outline"
+              size="sm"
+            >
+              {ASPECT_RATIOS.map((r) => (
+                <ToggleGroupItem key={r} value={r}>{r}</ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+            <FieldDescription>
+              输出尺寸: {RESOLUTION_SIZE[resolution][aspectRatio]}
+            </FieldDescription>
+          </Field>
 
-          {/* Options */}
-          <div className="space-y-3">
-            {/* Group Mode */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm">组图模式</span>
-                <p className="text-xs text-muted-foreground">生成一组内容关联的图片</p>
-              </div>
-              <button
-                onClick={() => setGroupMode(!groupMode)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  groupMode ? 'bg-primary' : 'bg-input'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    groupMode ? 'translate-x-4.5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
-            </div>
+          {/* Output Format */}
+          <Field orientation="vertical">
+            <FieldLabel>输出格式</FieldLabel>
+            <ToggleGroup
+              type="single"
+              value={outputFormat}
+              onValueChange={(v) => v && setOutputFormat(v as OutputFormat)}
+              variant="outline"
+              size="sm"
+            >
+              <ToggleGroupItem value="png">PNG</ToggleGroupItem>
+              <ToggleGroupItem value="jpeg">JPEG</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
 
-            {groupMode && (
-              <div className="flex items-center gap-2 pl-2 border-l-2 border-primary/30">
-                <label className="text-xs text-muted-foreground">生成张数:</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={maxGroupImages}
-                  value={maxImages}
-                  onChange={(e) => setMaxImages(Math.max(1, Math.min(maxGroupImages, parseInt(e.target.value) || 1)))}
-                  className="w-16 rounded-md border border-input bg-background px-2 py-1 text-xs text-center"
-                />
-                <span className="text-xs text-muted-foreground">（最多 {maxGroupImages} 张）</span>
-              </div>
-            )}
+          <Separator />
 
-            {/* Web Search */}
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <SearchIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-sm">联网搜索</span>
+          {/* Group Mode */}
+          <Field orientation="horizontal">
+            <div className="flex flex-col">
+              <FieldLabel>组图模式</FieldLabel>
+              <FieldDescription>生成一组内容关联的图片</FieldDescription>
+              {groupMode && (
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs text-muted-foreground">生成张数:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={maxGroupImages}
+                    value={maxImages}
+                    onChange={(e) => setMaxImages(Math.max(1, Math.min(maxGroupImages, parseInt(e.target.value) || 1)))}
+                    className="w-16 rounded-md border border-input bg-background px-2 py-1 text-xs text-center"
+                  />
+                  <span className="text-xs text-muted-foreground">（最多 {maxGroupImages} 张）</span>
                 </div>
-                <p className="text-xs text-muted-foreground">获取实时信息提升生成时效性</p>
-              </div>
-              <button
-                onClick={() => setWebSearch(!webSearch)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  webSearch ? 'bg-primary' : 'bg-input'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    webSearch ? 'translate-x-4.5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+              )}
             </div>
+            <Switch checked={groupMode} onCheckedChange={setGroupMode} size="sm" />
+          </Field>
 
-            {/* Watermark */}
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-sm">水印</span>
-                <p className="text-xs text-muted-foreground">在图片右下角添加"AI生成"标识</p>
+          {/* Web Search */}
+          <Field orientation="horizontal">
+            <div className="flex flex-col">
+              <div className="flex items-center gap-1.5">
+                <SearchIcon className="size-3.5 text-muted-foreground" />
+                <FieldLabel>联网搜索</FieldLabel>
               </div>
-              <button
-                onClick={() => setWatermark(!watermark)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  watermark ? 'bg-primary' : 'bg-input'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                    watermark ? 'translate-x-4.5' : 'translate-x-0.5'
-                  }`}
-                />
-              </button>
+              <FieldDescription>获取实时信息提升生成时效性</FieldDescription>
             </div>
-          </div>
+            <Switch checked={webSearch} onCheckedChange={setWebSearch} size="sm" />
+          </Field>
+
+          {/* Watermark */}
+          <Field orientation="horizontal">
+            <div className="flex flex-col">
+              <FieldLabel>水印</FieldLabel>
+              <FieldDescription>在图片右下角添加"AI生成"标识</FieldDescription>
+            </div>
+            <Switch checked={watermark} onCheckedChange={setWatermark} size="sm" />
+          </Field>
+
+          <Separator />
 
           {/* Submit */}
           <button
@@ -346,12 +311,12 @@ export default function SeedreamCreatePage(): React.JSX.Element {
           >
             {submitting ? (
               <>
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2Icon className="size-4 animate-spin" data-icon="inline-start" />
                 生成中...
               </>
             ) : (
               <>
-                <ImageIcon className="mr-2 h-4 w-4" />
+                <ImageIcon className="size-4" data-icon="inline-start" />
                 生成图片
               </>
             )}
@@ -360,15 +325,20 @@ export default function SeedreamCreatePage(): React.JSX.Element {
 
         {/* Right: Result Area */}
         <div>
-          <div className="rounded-lg border border-border bg-card p-4 h-full">
-            <h3 className="text-sm font-medium mb-3">生成结果</h3>
+          <div className="rounded-lg border border-border bg-card p-4 h-full flex flex-col gap-3">
+            <h3 className="text-sm font-medium">生成结果</h3>
             {submitting ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2Icon className="h-8 w-8 animate-spin text-muted-foreground" />
+                <Loader2Icon className="size-8 animate-spin text-muted-foreground" />
               </div>
             ) : results.length > 0 ? (
-              <div className="space-y-3">
-                <div className={`grid gap-3 ${results.length === 1 ? 'grid-cols-1' : results.length === 2 ? 'grid-cols-2' : 'grid-cols-2 lg:grid-cols-3'}`}>
+              <div className="flex flex-col gap-3">
+                <div className={cn(
+                  'grid gap-3',
+                  results.length === 1 && 'grid-cols-1',
+                  results.length === 2 && 'grid-cols-2',
+                  results.length > 2 && 'grid-cols-2 lg:grid-cols-3'
+                )}>
                   {results.map((img, idx) => (
                     <div key={idx} className="rounded-md border border-border overflow-hidden bg-muted">
                       <img
@@ -387,7 +357,6 @@ export default function SeedreamCreatePage(): React.JSX.Element {
                             rel="noreferrer"
                             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
                           >
-                            <DownloadIcon className="h-3 w-3" />
                             下载
                           </a>
                         )}
@@ -396,9 +365,10 @@ export default function SeedreamCreatePage(): React.JSX.Element {
                   ))}
                 </div>
                 {usage && (
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-border">
-                    <span>生成图片: {usage.generated_images} 张</span>
-                    <span>消耗 Token: {usage.output_tokens}</span>
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2">
+                    <Separator className="mb-2" />
+                    <Badge variant="secondary">生成 {usage.generated_images} 张</Badge>
+                    <Badge variant="outline">Token: {usage.output_tokens}</Badge>
                   </div>
                 )}
               </div>
