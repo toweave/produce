@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, Loader2Icon, Trash2Icon, FileTextIcon, XIcon } from 'lucide-react'
 import { handleApiError } from '@/lib/api-errors'
+import { TwoColumnLayout } from '@/components/two-column-layout'
 import VideoPlayer from '@/components/video-player'
 
 interface ContentInfo {
@@ -271,9 +272,12 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
         </div>
       </div>
 
-      <div className="flex gap-4">
-        <div className="flex-1 min-w-0">
-          {task.status === 'succeeded' && videoUrl ? (
+      <TwoColumnLayout
+        leftClassName="w-9/12"
+        rightClassName="w-3/12"
+        left={
+          <>
+            {task.status === 'succeeded' && videoUrl ? (
             <>
               <div
                 className="rounded-lg overflow-hidden bg-black mb-4"
@@ -377,10 +381,10 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
               <p className="text-sm leading-relaxed whitespace-pre-wrap">{getPrompt()}</p>
             </div>
           )}
-        </div>
-
-        <div className="w-72 flex-shrink-0">
-          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+        </>
+        }
+        right={
+          <div className="rounded-lg border border-border bg-card p-4 flex flex-col gap-3">
             <p className="text-xs font-medium text-muted-foreground mb-2">基本信息</p>
             <InfoItem label="模型" value={task.model} />
             <InfoItem
@@ -417,8 +421,8 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
               />
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {!isTerminal && (
         <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ListTodoIcon, RefreshCwIcon, Trash2Icon, EyeIcon, Loader2Icon, SettingsIcon, ChevronRightIcon, FileTextIcon } from 'lucide-react'
 import { handleApiError } from '@/lib/api-errors'
+import { TwoColumnLayout } from '@/components/two-column-layout'
 import VideoPlayer from '@/components/video-player'
 
 interface TaskItem {
@@ -252,350 +253,353 @@ export default function SeedanceTasksPage(): React.JSX.Element {
   }, [])
 
   return (
-    <div className="p-4 w-full h-full flex">
-      {/* ===== Left: Task List (2/3) ===== */}
-      <div className="p-4 w-2/3 min-w-0 flex flex-col">
-        <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <ListTodoIcon className="h-6 w-6" />
-            任务列表
-          </h1>
-          <button
-            onClick={fetchTasks}
-            disabled={loading}
-            className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
-          >
-            <RefreshCwIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            刷新
-          </button>
-        </div>
-
-        {/* Filter */}
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {STATUS_OPTIONS.map((opt) => (
-            <button
-              key={opt.value}
-              onClick={() => {
-                setStatusFilter(opt.value)
-                setPage(1)
-                setSelectedId(null)
-                setSelectedTask(null)
-                setVideoUrl('')
-              }}
-              className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-                statusFilter === opt.value
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-
-        {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-4">
-            <p>{error}</p>
-            {apiKeyMissing && (
+    <TwoColumnLayout
+        leftClassName="w-2/3"
+        rightClassName="w-1/3"
+        left={
+          <div className="p-4 flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                <ListTodoIcon className="h-6 w-6" />
+                任务列表
+              </h1>
               <button
-                onClick={() => navigate('/settings/keys')}
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                onClick={fetchTasks}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
               >
-                <SettingsIcon className="h-3 w-3" />
-                前往设置页面配置密钥
+                <RefreshCwIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                刷新
               </button>
-            )}
-          </div>
-        )}
+            </div>
 
-        {/* Table */}
-        <div className="rounded-md border border-border overflow-hidden flex-1">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">任务 ID</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">状态</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">模型</th>
-                <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
-                  创建时间
-                </th>
-                <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-10">
-                    <Loader2Icon className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
-                  </td>
-                </tr>
-              ) : tasks.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center py-10 text-muted-foreground">
-                    暂无任务
-                  </td>
-                </tr>
-              ) : (
-                tasks.map((task) => (
-                  <tr
-                    key={task.id}
-                    onClick={() => selectTask(task)}
-                    className={`border-b border-border last:border-0 cursor-pointer transition-colors ${
-                      selectedId === task.id
-                        ? 'bg-primary/10 hover:bg-primary/15'
-                        : 'hover:bg-muted/30'
-                    }`}
+            {/* Filter */}
+            <div className="flex gap-2 mb-4 flex-wrap">
+              {STATUS_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setStatusFilter(opt.value)
+                    setPage(1)
+                    setSelectedId(null)
+                    setSelectedTask(null)
+                    setVideoUrl('')
+                  }}
+                  className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
+                    statusFilter === opt.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+
+            {error && (
+              <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive mb-4">
+                <p>{error}</p>
+                {apiKeyMissing && (
+                  <button
+                    onClick={() => navigate('/settings/keys')}
+                    className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                   >
-                    <td className="px-4 py-2.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          navigate(`/seedance/tasks/${task.id}`)
-                        }}
-                        className="font-mono text-xs truncate max-w-[200px] block hover:text-primary transition-colors text-left"
-                        title="点击查看详情"
+                    <SettingsIcon className="h-3 w-3" />
+                    前往设置页面配置密钥
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Table */}
+            <div className="rounded-md border border-border overflow-hidden flex-1">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/50">
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">任务 ID</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">状态</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">模型</th>
+                    <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">
+                      创建时间
+                    </th>
+                    <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">操作</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-10">
+                        <Loader2Icon className="h-5 w-5 animate-spin mx-auto text-muted-foreground" />
+                      </td>
+                    </tr>
+                  ) : tasks.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-10 text-muted-foreground">
+                        暂无任务
+                      </td>
+                    </tr>
+                  ) : (
+                    tasks.map((task) => (
+                      <tr
+                        key={task.id}
+                        onClick={() => selectTask(task)}
+                        className={`border-b border-border last:border-0 cursor-pointer transition-colors ${
+                          selectedId === task.id
+                            ? 'bg-primary/10 hover:bg-primary/15'
+                            : 'hover:bg-muted/30'
+                        }`}
                       >
-                        {task.id}
-                      </button>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status] || 'bg-gray-100'}`}
-                      >
-                        {STATUS_LABEL[task.status] || task.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs">{task.model}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                      {task.created_at
-                        ? new Date(task.created_at * 1000).toLocaleString('zh-CN')
-                        : '-'}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="inline-flex gap-1">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            navigate(`/seedance/tasks/${task.id}`)
-                          }}
-                          className="rounded p-1 hover:bg-accent"
-                          title="查看详情"
-                        >
-                          <EyeIcon className="h-4 w-4" />
-                        </button>
-                        {['queued', 'succeeded', 'failed', 'expired'].includes(task.status) && (
+                        <td className="px-4 py-2.5">
                           <button
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleDelete(task.id)
+                              navigate(`/seedance/tasks/${task.id}`)
                             }}
-                            className="rounded p-1 hover:bg-accent text-destructive"
-                            title="删除"
+                            className="font-mono text-xs truncate max-w-[200px] block hover:text-primary transition-colors text-left"
+                            title="点击查看详情"
                           >
-                            <Trash2Icon className="h-4 w-4" />
+                            {task.id}
                           </button>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE[task.status] || 'bg-gray-100'}`}
+                          >
+                            {STATUS_LABEL[task.status] || task.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs">{task.model}</td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {task.created_at
+                            ? new Date(task.created_at * 1000).toLocaleString('zh-CN')
+                            : '-'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="inline-flex gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                navigate(`/seedance/tasks/${task.id}`)
+                              }}
+                              className="rounded p-1 hover:bg-accent"
+                              title="查看详情"
+                            >
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
+                            {['queued', 'succeeded', 'failed', 'expired'].includes(task.status) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleDelete(task.id)
+                                }}
+                                className="rounded p-1 hover:bg-accent text-destructive"
+                                title="删除"
+                              >
+                                <Trash2Icon className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="rounded-md border border-input bg-background px-3 py-1 text-sm disabled:opacity-50"
+                >
+                  上一页
+                </button>
+                <span className="text-sm text-muted-foreground">
+                  {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="rounded-md border border-input bg-background px-3 py-1 text-sm disabled:opacity-50"
+                >
+                  下一页
+                </button>
+              </div>
+            )}
+          </div>
+        }
+        right={
+          <div className="p-4 flex flex-col gap-4">
+            {/* Top: Video Preview */}
+            <div className="rounded-lg border border-border bg-card overflow-hidden flex-1 min-h-[200px] flex flex-col">
+              {!selectedId ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6">
+                  <ChevronRightIcon className="h-10 w-10" />
+                  <span className="text-sm">请选择一个任务</span>
+                </div>
+              ) : previewLoading ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                  <Loader2Icon className="h-6 w-6 animate-spin" />
+                  <span className="text-sm">加载中...</span>
+                </div>
+              ) : selectedTask?.status === 'succeeded' && videoUrl ? (
+                <div className="flex-1 flex flex-col">
+                  <div className="flex-1 relative">
+                    <VideoPlayer
+                      videoUrl={videoUrl}
+                      taskId={selectedTask.id}
+                      storageDir={storageDir}
+                      onKeyframeCapture={handleKeyframeCapture}
+                      onDownload={handleDownload}
+                    />
+                  </div>
+                  {keyframes.length > 0 && (
+                    <div className="border-t border-border p-2">
+                      <div className="flex gap-1.5 overflow-x-auto">
+                        {keyframes.map((dataUrl, i) => (
+                          <img
+                            key={i}
+                            src={dataUrl}
+                            alt={`关键帧 ${i + 1}`}
+                            className="h-14 w-auto rounded border border-border flex-shrink-0"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : selectedTask?.status === 'failed' ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6">
+                  <span className="inline-flex rounded-full px-3 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+                    失败
+                  </span>
+                  <p className="text-sm text-destructive text-center">
+                    {selectedTask.error?.message || '任务执行失败'}
+                  </p>
+                </div>
+              ) : ['queued', 'running'].includes(selectedTask?.status || '') ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                  <Loader2Icon className="h-6 w-6 animate-spin" />
+                  <span className="text-sm">
+                    {selectedTask?.status === 'queued' ? '排队中...' : '正在生成...'}
+                  </span>
+                </div>
+              ) : (
+                <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6">
+                  <span className="inline-flex rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400">
+                    {STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status}
+                  </span>
+                  <span className="text-sm">无可用视频</span>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom: Info Panel */}
+            <div className="rounded-lg border border-border bg-card p-4 max-h-[280px] overflow-y-auto">
+              {!selectedId ? (
+                <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground py-8">
+                  <FileTextIcon className="h-8 w-8" />
+                  <span className="text-xs">选择任务查看详情</span>
+                </div>
+              ) : previewLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2Icon className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Prompt */}
+                  {getPrompt() && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">提示词</p>
+                      <p className="text-sm leading-relaxed line-clamp-4">{getPrompt()}</p>
+                    </div>
+                  )}
+
+                  {/* Reference Images */}
+                  {(firstFrameDisplay || lastFrameDisplay) && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5">参考图片</p>
+                      <div className="flex gap-2">
+                        {firstFrameDisplay && (
+                          <div className="relative group">
+                            <img
+                              src={firstFrameDisplay}
+                              alt="首帧"
+                              className="h-16 w-auto rounded border border-border object-cover"
+                            />
+                            <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                              首帧
+                            </span>
+                          </div>
+                        )}
+                        {lastFrameDisplay && (
+                          <div className="relative group">
+                            <img
+                              src={lastFrameDisplay}
+                              alt="尾帧"
+                              className="h-16 w-auto rounded border border-border object-cover"
+                            />
+                            <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                              尾帧
+                            </span>
+                          </div>
                         )}
                       </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </div>
+                  )}
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-4">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="rounded-md border border-input bg-background px-3 py-1 text-sm disabled:opacity-50"
-            >
-              上一页
-            </button>
-            <span className="text-sm text-muted-foreground">
-              {page} / {totalPages}
-            </span>
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages}
-              className="rounded-md border border-input bg-background px-3 py-1 text-sm disabled:opacity-50"
-            >
-              下一页
-            </button>
+                  {/* Basic Info */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 border-t border-border">
+                    <InfoRow label="任务 ID" value={selectedTask?.id || ''} mono />
+                    <InfoRow
+                      label="状态"
+                      value={STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status || ''}
+                    />
+                    <InfoRow label="模型" value={selectedTask?.model || ''} />
+                    <InfoRow label="宽高比" value={selectedTask?.ratio || '-'} />
+                    <InfoRow label="分辨率" value={selectedTask?.resolution || '-'} />
+                    <InfoRow
+                      label="时长"
+                      value={selectedTask?.duration ? `${selectedTask.duration} 秒` : '-'}
+                    />
+                    <InfoRow
+                      label="音频"
+                      value={
+                        selectedTask?.generate_audio === undefined
+                          ? '-'
+                          : selectedTask.generate_audio
+                            ? '有声'
+                            : '无声'
+                      }
+                    />
+                    <InfoRow
+                      label="创建时间"
+                      value={
+                        selectedTask?.created_at
+                          ? new Date(selectedTask.created_at * 1000).toLocaleString('zh-CN')
+                          : '-'
+                      }
+                    />
+                  </div>
+
+                  {/* Error info */}
+                  {selectedTask?.status === 'failed' && selectedTask?.error && (
+                    <div className="rounded-md bg-destructive/10 p-2.5">
+                      <p className="text-xs font-medium text-destructive">
+                        错误：{selectedTask.error.code}
+                      </p>
+                      <p className="text-xs text-destructive/80 mt-0.5">{selectedTask.error.message}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </div>
-
-      {/* ===== Right: Preview Panel (1/3) ===== */}
-      <div className="p-4 w-1/3 min-w-0 flex flex-col space-y-4 ">
-        {/* Top: Video Preview */}
-        <div className="rounded-lg border border-border bg-card overflow-hidden flex-1 min-h-[200px] flex flex-col">
-          {!selectedId ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6">
-              <ChevronRightIcon className="h-10 w-10" />
-              <span className="text-sm">请选择一个任务</span>
-            </div>
-          ) : previewLoading ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-              <Loader2Icon className="h-6 w-6 animate-spin" />
-              <span className="text-sm">加载中...</span>
-            </div>
-          ) : selectedTask?.status === 'succeeded' && videoUrl ? (
-            <div className="flex-1 flex flex-col">
-              <div className="flex-1 relative">
-                <VideoPlayer
-                  videoUrl={videoUrl}
-                  taskId={selectedTask.id}
-                  storageDir={storageDir}
-                  onKeyframeCapture={handleKeyframeCapture}
-                  onDownload={handleDownload}
-                />
-              </div>
-              {keyframes.length > 0 && (
-                <div className="border-t border-border p-2">
-                  <div className="flex gap-1.5 overflow-x-auto">
-                    {keyframes.map((dataUrl, i) => (
-                      <img
-                        key={i}
-                        src={dataUrl}
-                        alt={`关键帧 ${i + 1}`}
-                        className="h-14 w-auto rounded border border-border flex-shrink-0"
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : selectedTask?.status === 'failed' ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6">
-              <span className="inline-flex rounded-full px-3 py-1 text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                失败
-              </span>
-              <p className="text-sm text-destructive text-center">
-                {selectedTask.error?.message || '任务执行失败'}
-              </p>
-            </div>
-          ) : ['queued', 'running'].includes(selectedTask?.status || '') ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-              <Loader2Icon className="h-6 w-6 animate-spin" />
-              <span className="text-sm">
-                {selectedTask?.status === 'queued' ? '排队中...' : '正在生成...'}
-              </span>
-            </div>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6">
-              <span className="inline-flex rounded-full px-3 py-1 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400">
-                {STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status}
-              </span>
-              <span className="text-sm">无可用视频</span>
-            </div>
-          )}
-        </div>
-
-        {/* Bottom: Info Panel */}
-        <div className="rounded-lg border border-border bg-card p-4 max-h-[280px] overflow-y-auto">
-          {!selectedId ? (
-            <div className="flex flex-col items-center justify-center gap-2 text-muted-foreground py-8">
-              <FileTextIcon className="h-8 w-8" />
-              <span className="text-xs">选择任务查看详情</span>
-            </div>
-          ) : previewLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2Icon className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {/* Prompt */}
-              {getPrompt() && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1">提示词</p>
-                  <p className="text-sm leading-relaxed line-clamp-4">{getPrompt()}</p>
-                </div>
-              )}
-
-              {/* Reference Images */}
-              {(firstFrameDisplay || lastFrameDisplay) && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5">参考图片</p>
-                  <div className="flex gap-2">
-                    {firstFrameDisplay && (
-                      <div className="relative group">
-                        <img
-                          src={firstFrameDisplay}
-                          alt="首帧"
-                          className="h-16 w-auto rounded border border-border object-cover"
-                        />
-                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-                          首帧
-                        </span>
-                      </div>
-                    )}
-                    {lastFrameDisplay && (
-                      <div className="relative group">
-                        <img
-                          src={lastFrameDisplay}
-                          alt="尾帧"
-                          className="h-16 w-auto rounded border border-border object-cover"
-                        />
-                        <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-                          尾帧
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Basic Info */}
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 border-t border-border">
-                <InfoRow label="任务 ID" value={selectedTask?.id || ''} mono />
-                <InfoRow
-                  label="状态"
-                  value={STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status || ''}
-                />
-                <InfoRow label="模型" value={selectedTask?.model || ''} />
-                <InfoRow label="宽高比" value={selectedTask?.ratio || '-'} />
-                <InfoRow label="分辨率" value={selectedTask?.resolution || '-'} />
-                <InfoRow
-                  label="时长"
-                  value={selectedTask?.duration ? `${selectedTask.duration} 秒` : '-'}
-                />
-                <InfoRow
-                  label="音频"
-                  value={
-                    selectedTask?.generate_audio === undefined
-                      ? '-'
-                      : selectedTask.generate_audio
-                        ? '有声'
-                        : '无声'
-                  }
-                />
-                <InfoRow
-                  label="创建时间"
-                  value={
-                    selectedTask?.created_at
-                      ? new Date(selectedTask.created_at * 1000).toLocaleString('zh-CN')
-                      : '-'
-                  }
-                />
-              </div>
-
-              {/* Error info */}
-              {selectedTask?.status === 'failed' && selectedTask?.error && (
-                <div className="rounded-md bg-destructive/10 p-2.5">
-                  <p className="text-xs font-medium text-destructive">
-                    错误：{selectedTask.error.code}
-                  </p>
-                  <p className="text-xs text-destructive/80 mt-0.5">{selectedTask.error.message}</p>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+        }
+      />
   )
 }
 

@@ -8,6 +8,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Field, FieldLabel, FieldDescription } from '@/components/ui/field'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { TwoColumnLayout } from '@/components/two-column-layout'
 
 type Resolution = '2K' | '3K' | '4K'
 type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16' | '3:2' | '2:3' | '21:9'
@@ -150,181 +151,180 @@ export default function SeedreamCreatePage(): React.JSX.Element {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Input Area */}
-        <div className="flex flex-col gap-4">
-          {/* Prompt */}
-          <Field orientation="vertical">
-            <Textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="描述你想要生成的图片内容，例如：一只可爱的橘猫坐在窗台上，阳光洒在它身上，温馨的室内场景"
-              rows={4}
-            />
-            <FieldDescription>
-              建议不超过 300 个汉字或 600 个英文单词
-            </FieldDescription>
-          </Field>
+      <TwoColumnLayout
+        left={
+          <div className="flex flex-col gap-4">
+            {/* Prompt */}
+            <Field orientation="vertical">
+              <Textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="描述你想要生成的图片内容，例如：一只可爱的橘猫坐在窗台上，阳光洒在它身上，温馨的室内场景"
+                rows={4}
+              />
+              <FieldDescription>
+                建议不超过 300 个汉字或 600 个英文单词
+              </FieldDescription>
+            </Field>
 
-          {/* Reference Images */}
-          <Field orientation="vertical">
-            <div className="flex items-center justify-between">
-              <FieldLabel>参考图片（{images.length}/{maxRefImages}）</FieldLabel>
-              <button
-                onClick={handleAddImage}
-                disabled={images.length >= maxRefImages}
-                className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50"
-              >
-                <UploadIcon className="size-3" />
-                上传图片
-              </button>
-            </div>
-            {images.length > 0 ? (
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {images.map((img) => (
-                  <div key={img.id} className="relative group rounded-md border border-border overflow-hidden aspect-square bg-muted">
-                    <img src={img.dataUri} alt={img.name} className="w-full h-full object-cover" />
-                    <button
-                      onClick={() => handleRemoveImage(img.id)}
-                      className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <XIcon className="size-3" />
-                    </button>
-                    <p className="absolute bottom-0 left-0 right-0 truncate bg-black/50 px-1 py-0.5 text-[10px] text-white">
-                      {img.name}
-                    </p>
-                  </div>
-                ))}
+            {/* Reference Images */}
+            <Field orientation="vertical">
+              <div className="flex items-center justify-between">
+                <FieldLabel>参考图片（{images.length}/{maxRefImages}）</FieldLabel>
+                <button
+                  onClick={handleAddImage}
+                  disabled={images.length >= maxRefImages}
+                  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-2.5 py-1 text-xs font-medium hover:bg-accent disabled:opacity-50"
+                >
+                  <UploadIcon className="size-3" />
+                  上传图片
+                </button>
               </div>
-            ) : (
-              <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-border rounded-md">
-                上传参考图片进行图文生图或多图融合（可选）
-              </p>
-            )}
-          </Field>
-
-          <Separator />
-
-          {/* Resolution */}
-          <Field orientation="vertical">
-            <FieldLabel>分辨率</FieldLabel>
-            <ToggleGroup
-              type="single"
-              value={resolution}
-              onValueChange={(v) => v && setResolution(v as Resolution)}
-              variant="outline"
-              size="sm"
-            >
-              <ToggleGroupItem value="2K">2K</ToggleGroupItem>
-              <ToggleGroupItem value="3K">3K</ToggleGroupItem>
-              <ToggleGroupItem value="4K">4K</ToggleGroupItem>
-            </ToggleGroup>
-          </Field>
-
-          {/* Aspect Ratio */}
-          <Field orientation="vertical">
-            <FieldLabel>宽高比</FieldLabel>
-            <ToggleGroup
-              type="single"
-              value={aspectRatio}
-              onValueChange={(v) => v && setAspectRatio(v as AspectRatio)}
-              variant="outline"
-              size="sm"
-            >
-              {ASPECT_RATIOS.map((r) => (
-                <ToggleGroupItem key={r} value={r}>{r}</ToggleGroupItem>
-              ))}
-            </ToggleGroup>
-            <FieldDescription>
-              输出尺寸: {RESOLUTION_SIZE[resolution][aspectRatio]}
-            </FieldDescription>
-          </Field>
-
-          {/* Output Format */}
-          <Field orientation="vertical">
-            <FieldLabel>输出格式</FieldLabel>
-            <ToggleGroup
-              type="single"
-              value={outputFormat}
-              onValueChange={(v) => v && setOutputFormat(v as OutputFormat)}
-              variant="outline"
-              size="sm"
-            >
-              <ToggleGroupItem value="png">PNG</ToggleGroupItem>
-              <ToggleGroupItem value="jpeg">JPEG</ToggleGroupItem>
-            </ToggleGroup>
-          </Field>
-
-          <Separator />
-
-          {/* Group Mode */}
-          <Field orientation="horizontal">
-            <div className="flex flex-col">
-              <FieldLabel>组图模式</FieldLabel>
-              <FieldDescription>生成一组内容关联的图片</FieldDescription>
-              {groupMode && (
-                <div className="flex items-center gap-2 mt-1.5">
-                  <span className="text-xs text-muted-foreground">生成张数:</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={maxGroupImages}
-                    value={maxImages}
-                    onChange={(e) => setMaxImages(Math.max(1, Math.min(maxGroupImages, parseInt(e.target.value) || 1)))}
-                    className="w-16 rounded-md border border-input bg-background px-2 py-1 text-xs text-center"
-                  />
-                  <span className="text-xs text-muted-foreground">（最多 {maxGroupImages} 张）</span>
+              {images.length > 0 ? (
+                <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                  {images.map((img) => (
+                    <div key={img.id} className="relative group rounded-md border border-border overflow-hidden aspect-square bg-muted">
+                      <img src={img.dataUri} alt={img.name} className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => handleRemoveImage(img.id)}
+                        className="absolute top-1 right-1 rounded-full bg-black/50 p-0.5 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <XIcon className="size-3" />
+                      </button>
+                      <p className="absolute bottom-0 left-0 right-0 truncate bg-black/50 px-1 py-0.5 text-[10px] text-white">
+                        {img.name}
+                      </p>
+                    </div>
+                  ))}
                 </div>
+              ) : (
+                <p className="text-xs text-muted-foreground py-4 text-center border border-dashed border-border rounded-md">
+                  上传参考图片进行图文生图或多图融合（可选）
+                </p>
               )}
-            </div>
-            <Switch checked={groupMode} onCheckedChange={setGroupMode} size="sm" />
-          </Field>
+            </Field>
 
-          {/* Web Search */}
-          <Field orientation="horizontal">
-            <div className="flex flex-col">
-              <div className="flex items-center gap-1.5">
-                <SearchIcon className="size-3.5 text-muted-foreground" />
-                <FieldLabel>联网搜索</FieldLabel>
+            <Separator />
+
+            {/* Resolution */}
+            <Field orientation="vertical">
+              <FieldLabel>分辨率</FieldLabel>
+              <ToggleGroup
+                type="single"
+                value={resolution}
+                onValueChange={(v) => v && setResolution(v as Resolution)}
+                variant="outline"
+                size="sm"
+              >
+                <ToggleGroupItem value="2K">2K</ToggleGroupItem>
+                <ToggleGroupItem value="3K">3K</ToggleGroupItem>
+                <ToggleGroupItem value="4K">4K</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+
+            {/* Aspect Ratio */}
+            <Field orientation="vertical">
+              <FieldLabel>宽高比</FieldLabel>
+              <ToggleGroup
+                type="single"
+                value={aspectRatio}
+                onValueChange={(v) => v && setAspectRatio(v as AspectRatio)}
+                variant="outline"
+                size="sm"
+              >
+                {ASPECT_RATIOS.map((r) => (
+                  <ToggleGroupItem key={r} value={r}>{r}</ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+              <FieldDescription>
+                输出尺寸: {RESOLUTION_SIZE[resolution][aspectRatio]}
+              </FieldDescription>
+            </Field>
+
+            {/* Output Format */}
+            <Field orientation="vertical">
+              <FieldLabel>输出格式</FieldLabel>
+              <ToggleGroup
+                type="single"
+                value={outputFormat}
+                onValueChange={(v) => v && setOutputFormat(v as OutputFormat)}
+                variant="outline"
+                size="sm"
+              >
+                <ToggleGroupItem value="png">PNG</ToggleGroupItem>
+                <ToggleGroupItem value="jpeg">JPEG</ToggleGroupItem>
+              </ToggleGroup>
+            </Field>
+
+            <Separator />
+
+            {/* Group Mode */}
+            <Field orientation="horizontal">
+              <div className="flex flex-col">
+                <FieldLabel>组图模式</FieldLabel>
+                <FieldDescription>生成一组内容关联的图片</FieldDescription>
+                {groupMode && (
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="text-xs text-muted-foreground">生成张数:</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={maxGroupImages}
+                      value={maxImages}
+                      onChange={(e) => setMaxImages(Math.max(1, Math.min(maxGroupImages, parseInt(e.target.value) || 1)))}
+                      className="w-16 rounded-md border border-input bg-background px-2 py-1 text-xs text-center"
+                    />
+                    <span className="text-xs text-muted-foreground">（最多 {maxGroupImages} 张）</span>
+                  </div>
+                )}
               </div>
-              <FieldDescription>获取实时信息提升生成时效性</FieldDescription>
-            </div>
-            <Switch checked={webSearch} onCheckedChange={setWebSearch} size="sm" />
-          </Field>
+              <Switch checked={groupMode} onCheckedChange={setGroupMode} size="sm" />
+            </Field>
 
-          {/* Watermark */}
-          <Field orientation="horizontal">
-            <div className="flex flex-col">
-              <FieldLabel>水印</FieldLabel>
-              <FieldDescription>在图片右下角添加"AI生成"标识</FieldDescription>
-            </div>
-            <Switch checked={watermark} onCheckedChange={setWatermark} size="sm" />
-          </Field>
+            {/* Web Search */}
+            <Field orientation="horizontal">
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1.5">
+                  <SearchIcon className="size-3.5 text-muted-foreground" />
+                  <FieldLabel>联网搜索</FieldLabel>
+                </div>
+                <FieldDescription>获取实时信息提升生成时效性</FieldDescription>
+              </div>
+              <Switch checked={webSearch} onCheckedChange={setWebSearch} size="sm" />
+            </Field>
 
-          <Separator />
+            {/* Watermark */}
+            <Field orientation="horizontal">
+              <div className="flex flex-col">
+                <FieldLabel>水印</FieldLabel>
+                <FieldDescription>在图片右下角添加"AI生成"标识</FieldDescription>
+              </div>
+              <Switch checked={watermark} onCheckedChange={setWatermark} size="sm" />
+            </Field>
 
-          {/* Submit */}
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || !prompt.trim()}
-            className="w-full inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <>
-                <Loader2Icon className="size-4 animate-spin" data-icon="inline-start" />
-                生成中...
-              </>
-            ) : (
-              <>
-                <ImageIcon className="size-4" data-icon="inline-start" />
-                生成图片
-              </>
-            )}
-          </button>
-        </div>
+            <Separator />
 
-        {/* Right: Result Area */}
-        <div>
+            {/* Submit */}
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !prompt.trim()}
+              className="w-full inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <>
+                  <Loader2Icon className="size-4 animate-spin" data-icon="inline-start" />
+                  生成中...
+                </>
+              ) : (
+                <>
+                  <ImageIcon className="size-4" data-icon="inline-start" />
+                  生成图片
+                </>
+              )}
+            </button>
+          </div>
+        }
+        right={
           <div className="rounded-lg border border-border bg-card p-4 h-full flex flex-col gap-3">
             <h3 className="text-sm font-medium">生成结果</h3>
             {submitting ? (
@@ -378,8 +378,8 @@ export default function SeedreamCreatePage(): React.JSX.Element {
               </div>
             )}
           </div>
-        </div>
-      </div>
+        }
+      />
     </div>
   )
 }
