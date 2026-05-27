@@ -18,15 +18,15 @@ produce/
 │   └── renderer/
 │       ├── index.html               # 渲染进程 HTML
 │       └── src/
-│           ├── main.jsx             # React 入口
-│           ├── App.jsx              # 根组件
+│           ├── main.tsx             # React 入口
+│           ├── App.tsx              # 根组件
 │           ├── assets/
 │           │   ├── main.css         # 全局样式（含 Tailwind @import）
 │           │   └── base.css         # CSS 变量与基础样式
 │           ├── components/
-│           │   ├── Versions.jsx     # 版本显示组件
+│           │   ├── Versions.tsx     # 版本显示组件
 │           │   └── ui/
-│           │       └── button.jsx   # shadcn Button 组件
+│           │       └── button.tsx   # shadcn Button 组件
 │           └── lib/
 │               └── utils.js         # cn() 工具函数
 ├── out/                              # 构建输出

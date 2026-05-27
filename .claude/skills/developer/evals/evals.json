@@ -34,14 +34,14 @@
       "id": 3,
       "name": "shadcn Dialog 设置弹窗",
       "prompt": "帮我添加 shadcn 的 Dialog 组件，然后用它实现一个简单的设置弹窗，包含一个主题切换开关和一个版本信息显示。使用 @/ 别名导入。",
-      "expected_output": "使用 shadcn CLI 添加 Dialog 组件的命令、基于 Dialog 封装的 SettingsDialog 组件代码、在 App.jsx 中的集成使用",
+      "expected_output": "使用 shadcn CLI 添加 Dialog 组件的命令、基于 Dialog 封装的 SettingsDialog 组件代码、在 App.tsx 中的集成使用",
       "files": [],
       "expectations": [
         "通过 shadcn CLI 添加了 Dialog 组件",
         "创建的设置弹窗组件使用 @/ 别名导入 Dialog 和 cn",
         "设置弹窗包含一个主题切换开关",
         "设置弹窗显示版本信息",
-        "将设置弹窗集成到了 App.jsx 中"
+        "将设置弹窗集成到了 App.tsx 中"
       ]
     }
   ]

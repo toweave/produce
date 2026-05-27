@@ -13,7 +13,7 @@
     {
       "text": "创建了渲染进程拖拽组件，包含 dragover/drop 事件处理",
       "passed": true,
-      "evidence": "FileDropZone.jsx exists at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-1-file-drag-import/with_skill/outputs/src/renderer/src/components/FileDropZone.jsx"
+      "evidence": "FileDropZone.tsx exists at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-1-file-drag-import/with_skill/outputs/src/renderer/src/components/FileDropZone.tsx"
     },
     {
       "text": "同时支持图片和文本文件类型",

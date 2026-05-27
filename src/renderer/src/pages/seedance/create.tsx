@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { VideoIcon, UploadIcon, XIcon, Loader2Icon, CameraIcon, PlayIcon, SettingsIcon } from 'lucide-react'
 import { handleApiError } from '@/lib/api-errors'
-
-type Ratio = '16:9' | '4:3' | '1:1' | '3:4' | '9:16' | '21:9' | 'adaptive'
-type Resolution = '480p' | '720p' | '1080p'
+import { TwoColumnLayout } from '@/components/two-column-layout'
+import { CreateForm } from './components/create-form'
+import { VideoPlayer } from './components/video-player'
+import { KeyframeGrid } from './components/keyframe-grid'
+import type { Ratio, Resolution } from './types'
 
 const STORAGE_DIRS_KEY = 'seedance-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance-storage-current'
@@ -84,7 +85,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   const [isPlaying, setIsPlaying] = useState(false)
   const [hasInteracted, setHasInteracted] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
-  const [isHovering, setIsHovering] = useState(false)
   const [capturingAuto, setCapturingAuto] = useState(false)
 
   // Keyframes state
@@ -92,9 +92,8 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   const [manualKeyframes, setManualKeyframes] = useState<string[]>([])
   const [captureFlash, setCaptureFlash] = useState(false)
 
-  // Init storage location
+  // Cleanup blob URL on unmount
   useEffect(() => {
-    // Cleanup blob URL on unmount
     return () => {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     }
@@ -130,7 +129,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     saveTimerRef.current = setTimeout(() => {
       try {
         const data = { prompt, ratio, duration, resolution, generateAudio, watermark, useLastFrame, firstFramePath, lastFramePath }
-        // Only save image data if not too large
         if (imageData && imageData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).imageData = imageData
         if (lastFrameData && lastFrameData.length < 2 * 1024 * 1024) (data as Record<string, unknown>).lastFrameData = lastFrameData
         localStorage.setItem(FORM_PARAMS_KEY, JSON.stringify(data))
@@ -143,6 +141,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     }
   }, [prompt, ratio, duration, resolution, generateAudio, watermark, imageData, lastFrameData, useLastFrame, firstFramePath, lastFramePath])
 
+  // Init storage location
   useEffect(() => {
     const initStorage = async (): Promise<void> => {
       try {
@@ -164,12 +163,11 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     initStorage()
   }, [])
 
-  // Restore last session: always query API for latest completed task, fall back to localStorage
+  // Restore last session
   useEffect(() => {
     if (!currentDir) return
     const restoreSession = async (): Promise<void> => {
       try {
-        // Step 1: Always query API for the latest completed task
         let taskId: string | null = null
         let remoteUrl = ''
         let apiFailed = false
@@ -187,15 +185,12 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           apiFailed = true
         }
 
-        // Step 2: If API failed, fall back to localStorage session
         if (apiFailed || !taskId) {
           const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
           if (raw) {
             const session = JSON.parse(raw)
             taskId = session.taskId || null
             remoteUrl = session.remoteUrl || session.videoUrl || ''
-
-            // Try local file from saved path
             if (session.localPath && taskId) {
               try {
                 const buffer = await window.api.file.readFileBuffer(session.localPath)
@@ -203,28 +198,22 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
                 blobUrlRef.current = URL.createObjectURL(blob)
                 setVideoUrl(blobUrlRef.current)
-                remoteUrl = '' // Skip remote download below
-              } catch {
-                // File unavailable
-              }
+                remoteUrl = ''
+              } catch { /* file unavailable */ }
             }
           }
         }
 
-        // Step 3: If we have a taskId but no blob URL yet, download the video
-        if (!taskId) return // Nothing to restore
-
+        if (!taskId) return
         setCreatedId(taskId)
 
         if (remoteUrl && !blobUrlRef.current) {
-          // Check if we already have a local copy saved from a previous session
           let foundLocal = false
           try {
             const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
             if (raw) {
               const session = JSON.parse(raw)
               if (session.taskId === taskId && session.localPath) {
-                // Same task as last time — try the cached file first
                 const buffer = await window.api.file.readFileBuffer(session.localPath)
                 const blob = new Blob([buffer], { type: 'video/mp4' })
                 if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
@@ -233,9 +222,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 foundLocal = true
               }
             }
-          } catch {
-            // Ignore and fall through to download
-          }
+          } catch { /* ignore */ }
 
           if (!foundLocal) {
             try {
@@ -249,40 +236,29 @@ export default function SeedanceCreatePage(): React.JSX.Element {
               if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
               blobUrlRef.current = URL.createObjectURL(blob)
               setVideoUrl(blobUrlRef.current)
-
-              // Save session for next visit
               localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify({
-                taskId,
-                remoteUrl,
-                localPath,
-                dir: currentDir
+                taskId, remoteUrl, localPath, dir: currentDir
               }))
             } catch {
-              // Download failed, fall back to remote URL
               setVideoUrl(remoteUrl)
             }
           }
         }
 
-        // Step 4: Read saved keyframes from disk
         const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
         const autoFrames = result.autoFrames.filter(Boolean) as string[]
         if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
         if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
-      } catch {
-        // Ignore restore errors
-      }
+      } catch { /* ignore */ }
     }
     restoreSession()
   }, [currentDir])
 
-  // Save storage state
   const saveStorageDir = useCallback((dir: string, dirs: string[]): void => {
     localStorage.setItem(STORAGE_DIRS_KEY, JSON.stringify(dirs))
     localStorage.setItem(STORAGE_CURRENT_KEY, dir)
   }, [])
 
-  // Handle storage dir change
   const handleStorageChange = async (e: React.ChangeEvent<HTMLSelectElement>): Promise<void> => {
     const val = e.target.value
     if (val === '__add__') {
@@ -304,7 +280,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     }
   }
 
-  // Image selection
   const handleSelectImage = async (): Promise<void> => {
     const filePath = await window.api.dialog.openFile()
     if (!filePath) return
@@ -321,7 +296,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     setLastFramePath(filePath)
   }
 
-  // Task polling
   const pollTask = useCallback(async (taskId: string): Promise<void> => {
     let stopped = false
     while (!stopped) {
@@ -338,14 +312,11 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           const content = result.content as Record<string, unknown> | undefined
           const remoteUrl = String(content?.video_url || '')
 
-          // Download video to local storage, then serve from local blob URL
           try {
             const timestamp = Date.now()
             const filename = `Seedance_${taskId}_${timestamp}`
             const localPath = await window.api.file.downloadVideo({
-              url: remoteUrl,
-              destDir: currentDir,
-              filename
+              url: remoteUrl, destDir: currentDir, filename
             })
             const buffer = await window.api.file.readFileBuffer(localPath)
             const blob = new Blob([buffer], { type: 'video/mp4' })
@@ -353,15 +324,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
             blobUrlRef.current = URL.createObjectURL(blob)
             setVideoUrl(blobUrlRef.current)
 
-            // Save session for next visit (with local path for instant restore)
             localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify({
-              taskId,
-              remoteUrl,
-              localPath,
-              dir: currentDir
+              taskId, remoteUrl, localPath, dir: currentDir
             }))
-          } catch (e) {
-            console.error('视频下载或本地加载失败，使用远程URL:', e)
+          } catch {
             setVideoUrl(remoteUrl)
           }
         } else if (status === 'failed') {
@@ -372,15 +338,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           stopped = true
           setPollError(`任务已${status === 'cancelled' ? '取消' : '过期'}`)
         }
-      } catch (err) {
-        console.error('轮询失败:', err)
+      } catch {
         setPollError('查询任务状态失败')
         stopped = true
       }
     }
   }, [currentDir])
 
-  // Handle submit
   const handleSubmit = async (): Promise<void> => {
     if (!prompt.trim()) {
       setError('请输入视频提示词')
@@ -425,7 +389,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       setTaskStatus('queued')
       pollTask(result.id)
 
-      // Save all task params including reference image paths
       try {
         const relativeFirstPath = firstFramePath && currentDir
           ? await window.api.path.relative(currentDir, firstFramePath)
@@ -470,7 +433,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
     const doAutoCapture = async (): Promise<void> => {
       setCapturingAuto(true)
-      // Wait for metadata
       if (!video.duration || video.duration === 0) {
         await new Promise<void>((resolve) => {
           const handler = (): void => {
@@ -492,7 +454,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         Math.max(0, dur - (1 / fps))
       ]
 
-      // Pause video for seeking
       video.pause()
       const canvas = document.createElement('canvas')
       const frames: string[] = []
@@ -503,28 +464,23 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           const dataUrl = captureFrameToDataUrl(video, canvas)
           if (dataUrl) {
             frames.push(dataUrl)
-            // Save to disk (fire-and-forget)
             window.api.file.saveKeyframe({
               base64Data: dataUrl,
               destDir: currentDir,
               filename: `Seedance_${createdId}_keyframe_${i}`
             }).catch((e) => console.error('自动关键帧保存失败:', e))
           }
-        } catch {
-          // Skip failed frame
-        }
+        } catch { /* skip failed frame */ }
       }
 
       setAutoKeyframes(frames)
       setCapturingAuto(false)
-      // Seek back to start
       video.currentTime = 0
     }
 
     doAutoCapture()
   }, [videoUrl, currentDir, createdId])
 
-  // Manual keyframe capture
   const handleCaptureKeyframe = useCallback(async (): Promise<void> => {
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -535,31 +491,24 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
     const index = manualKeyframes.length
     setManualKeyframes((prev) => [...prev, dataUrl])
-
-    // Flash feedback
     setCaptureFlash(true)
     setTimeout(() => setCaptureFlash(false), 300)
 
-    // Save to disk
     try {
       await window.api.file.saveKeyframe({
         base64Data: dataUrl,
         destDir: currentDir,
         filename: `Seedance_${createdId}_manual_${index}`
       })
-      // Update session manual count
       const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
       if (raw) {
         const session = JSON.parse(raw)
         session.manualCount = index + 1
         localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify(session))
       }
-    } catch {
-      console.error('关键帧保存失败')
-    }
+    } catch { console.error('关键帧保存失败') }
   }, [manualKeyframes, currentDir, createdId])
 
-  // Delete a single manual keyframe
   const handleDeleteManualKeyframe = useCallback(async (index: number): Promise<void> => {
     if (!window.confirm('确定删除此关键帧？')) return
     try {
@@ -575,12 +524,9 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         await window.api.file.deleteFile(`${currentDir}/${oldFilename}.png`)
       }
       setManualKeyframes((prev) => prev.filter((_, i) => i !== index))
-    } catch (e) {
-      console.error('删除关键帧失败:', e)
-    }
+    } catch { console.error('删除关键帧失败:') }
   }, [manualKeyframes, currentDir, createdId])
 
-  // Clear all keyframes
   const handleClearAllKeyframes = useCallback(async (): Promise<void> => {
     if (!window.confirm('确定清空所有关键帧？此操作不可撤销')) return
     try {
@@ -590,13 +536,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       for (let i = 0; i < manualKeyframes.length; i++) {
         await window.api.file.deleteFile(`${currentDir}/Seedance_${createdId}_manual_${i}.png`).catch(() => {})
       }
-    } catch {
-      // Ignore file deletion errors
-    }
+    } catch { /* ignore */ }
     setAutoKeyframes([])
     setManualKeyframes([])
   }, [autoKeyframes, manualKeyframes, currentDir, createdId])
-
 
   // Keyboard controls (frame stepping when paused)
   useEffect(() => {
@@ -622,9 +565,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     const video = videoRef.current
     if (!video) return
     if (video.paused) {
-      video.play().catch(() => {
-        setIsPlaying(false)
-      })
+      video.play().catch(() => setIsPlaying(false))
     } else {
       video.pause()
     }
@@ -643,474 +584,70 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
   const handleVideoPlay = (): void => setIsPlaying(true)
 
-  // Keyframe button visibility:
-  // - Show on hover (whether playing or paused)
-  // - Show when video is paused
-  // - Hide during playback (unless hovering)
-  const showKeyframeBtn = isHovering || (!isPlaying && !!videoUrl)
-
   return (
-    <div className="p-4 flex w-full h-full gap-4">
-      {/* ===== Left Panel ===== */}
-      <div className="w-1/2 space-y-4 overflow-y-auto">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <VideoIcon className="h-6 w-6" />
-            视频创作
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            使用 Doubao-Seedance-1.5-Pro 模型生成视频
-          </p>
-        </div>
-
-        {/* Prompt */}
-        <div>
-          <label className="block text-sm font-medium mb-1.5">提示词</label>
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            placeholder="描述你想要生成的视频内容，例如：写实风格，晴朗的蓝天之下，一大片白色的雏菊花田，镜头逐渐拉近..."
-            rows={4}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    <TwoColumnLayout
+      left={
+        <CreateForm
+          prompt={prompt}
+          imageData={imageData}
+          lastFrameData={lastFrameData}
+          useLastFrame={useLastFrame}
+          ratio={ratio}
+          duration={duration}
+          resolution={resolution}
+          generateAudio={generateAudio}
+          watermark={watermark}
+          error={error}
+          apiKeyMissing={apiKeyMissing}
+          submitting={submitting}
+          createdId={createdId}
+          storageDirs={storageDirs}
+          currentDir={currentDir}
+          onPromptChange={setPrompt}
+          onSelectImage={handleSelectImage}
+          onClearImage={() => { setImageData(null); setFirstFramePath('') }}
+          onSelectLastFrame={handleSelectLastFrame}
+          onUseLastFrameChange={setUseLastFrame}
+          onRatioChange={setRatio}
+          onDurationChange={setDuration}
+          onResolutionChange={setResolution}
+          onGenerateAudioChange={setGenerateAudio}
+          onWatermarkChange={setWatermark}
+          onStorageChange={handleStorageChange}
+          onSubmit={handleSubmit}
+        />
+      }
+      right={
+        <div className="flex flex-col gap-4">
+          <VideoPlayer
+            videoUrl={videoUrl}
+            pollError={pollError}
+            createdId={createdId}
+            taskStatus={taskStatus}
+            isPlaying={isPlaying}
+            currentTime={currentTime}
+            captureFlash={captureFlash}
+            videoRef={videoRef}
+            onPlayPause={handlePlayPause}
+            onCaptureKeyframe={handleCaptureKeyframe}
+            onReset={() => { setCreatedId(''); setTaskStatus(''); setPollError('') }}
+            onTimeUpdate={handleVideoTimeUpdate}
+            onPause={handleVideoPause}
+            onPlay={handleVideoPlay}
+            formatTimecode={formatTimecode}
           />
-          <p className="text-xs text-muted-foreground mt-1">
-            中文不超过 500 字，英文不超过 1000 词
-          </p>
-        </div>
-
-        {/* Reference Image */}
-        <div>
-          <label className="block text-sm font-medium mb-1.5">参考图片（可选）</label>
-          <div className="flex items-center gap-2 mb-2">
-            <label className="flex items-center gap-1.5 text-xs">
-              <input
-                type="checkbox"
-                checked={useLastFrame}
-                onChange={(e) => setUseLastFrame(e.target.checked)}
-                className="rounded border-gray-300"
-              />
-              使用首尾帧
-            </label>
-          </div>
-          <div className="flex gap-3">
-            <div
-              onClick={handleSelectImage}
-              className="relative flex flex-col items-center justify-center w-32 h-32 rounded-lg border-2 border-dashed border-input bg-background cursor-pointer hover:border-primary/50 transition-colors"
-            >
-              {imageData ? (
-                <>
-                  <img
-                    src={imageData}
-                    alt="首帧"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setImageData(null)
-                      setFirstFramePath('')
-                    }}
-                    className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-0.5"
-                  >
-                    <XIcon className="h-3 w-3" />
-                  </button>
-                </>
-              ) : (
-                <>
-                  <UploadIcon className="h-5 w-5 text-muted-foreground mb-1" />
-                  <span className="text-xs text-muted-foreground">选择首帧图</span>
-                </>
-              )}
-            </div>
-            {useLastFrame && (
-              <div
-                onClick={handleSelectLastFrame}
-                className="relative flex flex-col items-center justify-center w-32 h-32 rounded-lg border-2 border-dashed border-input bg-background cursor-pointer hover:border-primary/50 transition-colors"
-              >
-                {lastFrameData ? (
-                  <img
-                    src={lastFrameData}
-                    alt="尾帧"
-                    className="w-full h-full object-cover rounded-lg"
-                  />
-                ) : (
-                  <>
-                    <UploadIcon className="h-5 w-5 text-muted-foreground mb-1" />
-                    <span className="text-xs text-muted-foreground">选择尾帧图</span>
-                  </>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Parameters */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium mb-1">宽高比</label>
-            <select
-              value={ratio}
-              onChange={(e) => setRatio(e.target.value as Ratio)}
-              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="adaptive">自适应</option>
-              <option value="16:9">16:9</option>
-              <option value="4:3">4:3</option>
-              <option value="1:1">1:1</option>
-              <option value="3:4">3:4</option>
-              <option value="9:16">9:16</option>
-              <option value="21:9">21:9</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">时长</label>
-            <select
-              value={duration}
-              onChange={(e) => setDuration(Number(e.target.value))}
-              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            >
-              {Array.from({ length: 9 }, (_, i) => i + 4).map((d) => (
-                <option key={d} value={d}>
-                  {d} 秒
-                </option>
-              ))}
-              <option value={-1}>自动</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">分辨率</label>
-            <select
-              value={resolution}
-              onChange={(e) => setResolution(e.target.value as Resolution)}
-              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="480p">480p</option>
-              <option value="720p">720p</option>
-              <option value="1080p">1080p</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1">音频</label>
-            <select
-              value={generateAudio ? 'true' : 'false'}
-              onChange={(e) => setGenerateAudio(e.target.value === 'true')}
-              className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
-            >
-              <option value="true">生成音频</option>
-              <option value="false">无声</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Watermark */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="watermark"
-            checked={watermark}
-            onChange={(e) => setWatermark(e.target.checked)}
-            className="rounded border-gray-300"
+          <KeyframeGrid
+            capturingAuto={capturingAuto}
+            autoKeyframes={autoKeyframes}
+            manualKeyframes={manualKeyframes}
+            hasVideo={!!videoUrl}
+            onSetFirstFrame={(dataUrl) => setImageData(dataUrl)}
+            onSetLastFrame={(dataUrl) => { setLastFrameData(dataUrl); setUseLastFrame(true) }}
+            onDeleteManualKeyframe={handleDeleteManualKeyframe}
+            onClearAllKeyframes={handleClearAllKeyframes}
           />
-          <label htmlFor="watermark" className="text-sm">
-            添加水印
-          </label>
         </div>
-
-        {/* Storage Location */}
-        <div>
-          <label className="block text-sm font-medium mb-1.5">存储位置</label>
-          <div className="flex gap-2">
-            <select
-              value={currentDir}
-              onChange={handleStorageChange}
-              className="flex-1 rounded-md border border-input bg-background px-2 py-1.5 text-sm truncate"
-            >
-              {storageDirs.map((dir) => (
-                <option key={dir} value={dir}>
-                  {dir}
-                </option>
-              ))}
-              <option value="__add__">+ 添加目录...</option>
-            </select>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1 truncate">{currentDir}</p>
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-            <p>{error}</p>
-            {apiKeyMissing && (
-              <button
-                onClick={() => navigate('/settings/keys')}
-                className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-              >
-                <SettingsIcon className="h-3 w-3" />
-                前往设置页面配置密钥
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Submit */}
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? (
-              <>
-                <Loader2Icon className="mr-2 h-4 w-4 animate-spin" />
-                创建中...
-              </>
-            ) : (
-              <>
-                <VideoIcon className="mr-2 h-4 w-4" />
-                生成视频
-              </>
-            )}
-          </button>
-          {createdId && (
-            <button
-              onClick={() => navigate(`/seedance/tasks/${createdId}`)}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-            >
-              查看详情
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ===== Right Panel ===== */}
-      <div className="w-1/2 flex flex-col space-y-4">
-        {/* Top half: Video Player */}
-        <div className="flex-1 rounded-lg border border-border bg-card overflow-hidden flex flex-col relative min-h-[240px]">
-          {!videoUrl && !pollError && (
-            /* Loading / Waiting state */
-            <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-              {!createdId ? (
-                <>
-                  <VideoIcon className="h-10 w-10" />
-                  <span className="text-sm">填写左侧参数后点击&#34;生成视频&#34;</span>
-                </>
-              ) : (
-                <>
-                  <Loader2Icon className="h-8 w-8 animate-spin" />
-                  <span className="text-sm">
-                    {taskStatus === 'succeeded'
-                      ? '任务已完成，正在下载视频...'
-                      : `任务正在${taskStatus === 'queued' ? '排队' : '生成'}中...`}
-                  </span>
-                  <span className="text-xs font-mono">ID: {createdId}</span>
-                  <span className="text-xs text-muted-foreground">
-                    状态:{' '}
-                    {taskStatus === 'queued'
-                      ? '排队中'
-                      : taskStatus === 'running'
-                        ? '生成中'
-                        : taskStatus}
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-
-          {pollError && !videoUrl && (
-            /* Error state */
-            <div className="flex-1 flex flex-col items-center justify-center gap-3">
-              <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
-                {pollError}
-              </div>
-              <button
-                onClick={() => {
-                  setCreatedId('')
-                  setTaskStatus('')
-                  setPollError('')
-                }}
-                className="text-sm text-primary hover:underline"
-              >
-                重新开始
-              </button>
-            </div>
-          )}
-
-          {videoUrl && (
-            /* Video player */
-            <div
-              className="flex-1 relative bg-black flex items-center justify-center"
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
-            >
-              {/* Timecode overlay */}
-              <div className="absolute top-2 left-2 z-10 bg-black/60 rounded px-2 py-0.5 text-xs font-mono text-white select-none">
-                {formatTimecode(currentTime, 24)}
-              </div>
-
-              {/* Capture flash feedback */}
-              {captureFlash && (
-                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 bg-green-500/80 text-white text-xs rounded px-3 py-1 animate-pulse">
-                  已截图
-                </div>
-              )}
-
-              {/* Keyframe capture button */}
-              {showKeyframeBtn && (
-                <button
-                  onClick={handleCaptureKeyframe}
-                  className="absolute top-2 right-2 z-10 inline-flex items-center gap-1 rounded-md bg-primary/90 px-2.5 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary transition-colors"
-                >
-                  <CameraIcon className="h-3.5 w-3.5" />
-                  生成关键帧
-                </button>
-              )}
-
-              <video
-                ref={videoRef}
-                src={videoUrl}
-                className="max-w-full max-h-full cursor-pointer"
-                onClick={handlePlayPause}
-                onTimeUpdate={handleVideoTimeUpdate}
-                onPause={handleVideoPause}
-                onPlay={handleVideoPlay}
-                controls={false}
-              />
-
-              {/* Play/Pause button — centered icon only, non-blocking */}
-              {!isPlaying && (
-                <button
-                  onClick={handlePlayPause}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 rounded-full bg-background/80 p-3 hover:bg-background/95 transition-colors shadow-lg"
-                >
-                  <PlayIcon className="h-6 w-6" />
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Bottom half: Keyframes */}
-        <div className="flex-1 rounded-lg border border-border bg-card overflow-y-auto min-h-[180px] p-4">
-          {capturingAuto && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground h-full">
-              <Loader2Icon className="h-4 w-4 animate-spin" />
-              正在提取关键帧...
-            </div>
-          )}
-
-          {!capturingAuto &&
-            autoKeyframes.length === 0 &&
-            manualKeyframes.length === 0 &&
-            !videoUrl && (
-              <div className="flex items-center justify-center text-sm text-muted-foreground h-full">
-                视频生成完成后将自动显示关键帧
-              </div>
-            )}
-
-          {!capturingAuto && (autoKeyframes.length > 0 || manualKeyframes.length > 0) && (
-            <div className="space-y-3">
-              {autoKeyframes.length > 0 && (
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">自动关键帧</p>
-                  <div className="grid grid-cols-3 gap-2">
-                    {autoKeyframes.map((dataUrl, i) => (
-                      <div key={`auto-${i}`} className="relative group">
-                        <img
-                          src={dataUrl}
-                          alt={`关键帧 ${i}`}
-                          className="w-full rounded border border-border object-cover aspect-video"
-                        />
-                        <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
-                          {i === 0 ? '开头' : i === 5 ? '结尾' : `${Math.round((i / 5) * 100)}%`}
-                        </span>
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setImageData(dataUrl)
-                            }}
-                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
-                            title="引用为首帧"
-                          >
-                            首帧
-                          </button>
-                          <button
-                            onClick={() => {
-                              setLastFrameData(dataUrl)
-                              setUseLastFrame(true)
-                            }}
-                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
-                            title="引用为尾帧"
-                          >
-                            尾帧
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {manualKeyframes.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-muted-foreground">手动截图</p>
-                    <button
-                      onClick={handleClearAllKeyframes}
-                      className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      清空全部
-                    </button>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {manualKeyframes.map((dataUrl, i) => (
-                      <div key={`manual-${i}`} className="relative group">
-                        <img
-                          src={dataUrl}
-                          alt={`手动截图 ${i}`}
-                          className="w-full rounded border border-border object-cover aspect-video"
-                        />
-                        {/* Hover overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              setImageData(dataUrl)
-                            }}
-                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
-                            title="引用为首帧"
-                          >
-                            首帧
-                          </button>
-                          <button
-                            onClick={() => {
-                              setLastFrameData(dataUrl)
-                              setUseLastFrame(true)
-                            }}
-                            className="rounded bg-white/90 px-2 py-1 text-[10px] font-medium text-black hover:bg-white transition-colors"
-                            title="引用为尾帧"
-                          >
-                            尾帧
-                          </button>
-                          <button
-                            onClick={() => handleDeleteManualKeyframe(i)}
-                            className="rounded bg-red-500/90 px-2 py-1 text-[10px] font-medium text-white hover:bg-red-600 transition-colors"
-                            title="删除"
-                          >
-                            删除
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Hidden canvas for frame capture */}
-      <canvas ref={canvasRef} className="hidden" />
-    </div>
+      }
+    />
   )
 }

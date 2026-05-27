@@ -4,7 +4,7 @@
   "prompt": "帮我添加 shadcn 的 Dialog 组件，然后用它实现一个简单的设置弹窗，包含一个主题切换开关和一个版本信息显示。使用 @/ 别名导入。",
   "assertions": [
     {
-      "text": "通过 shadcn CLI 添加了 Dialog 组件（检查 components/ui/ 下是否有 dialog.jsx）",
+      "text": "通过 shadcn CLI 添加了 Dialog 组件（检查 components/ui/ 下是否有 dialog.tsx）",
       "passed": false,
       "evidence": ""
     },
@@ -24,7 +24,7 @@
       "evidence": ""
     },
     {
-      "text": "将设置弹窗集成到了 App.jsx 中",
+      "text": "将设置弹窗集成到了 App.tsx 中",
       "passed": false,
       "evidence": ""
     }

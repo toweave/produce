@@ -41,7 +41,7 @@
         {
           "text": "\u521b\u5efa\u4e86\u6e32\u67d3\u8fdb\u7a0b\u62d6\u62fd\u7ec4\u4ef6\uff0c\u5305\u542b dragover/drop \u4e8b\u4ef6\u5904\u7406",
           "passed": true,
-          "evidence": "FileDropZone.jsx exists at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-1-file-drag-import/with_skill/outputs/src/renderer/src/components/FileDropZone.jsx"
+          "evidence": "FileDropZone.tsx exists at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-1-file-drag-import/with_skill/outputs/src/renderer/src/components/FileDropZone.tsx"
         },
         {
           "text": "\u540c\u65f6\u652f\u6301\u56fe\u7247\u548c\u6587\u672c\u6587\u4ef6\u7c7b\u578b",
@@ -120,9 +120,9 @@
       },
       "expectations": [
         {
-          "text": "\u901a\u8fc7 shadcn CLI \u6dfb\u52a0\u4e86 Dialog \u7ec4\u4ef6\uff08\u68c0\u67e5 components/ui/ \u4e0b\u662f\u5426\u6709 dialog.jsx\uff09",
+          "text": "\u901a\u8fc7 shadcn CLI \u6dfb\u52a0\u4e86 Dialog \u7ec4\u4ef6\uff08\u68c0\u67e5 components/ui/ \u4e0b\u662f\u5426\u6709 dialog.tsx\uff09",
           "passed": true,
-          "evidence": "Found dialog.jsx at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-3-shadcn-dialog/with_skill/outputs/src/renderer/src/components/ui/dialog.jsx"
+          "evidence": "Found dialog.tsx at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-3-shadcn-dialog/with_skill/outputs/src/renderer/src/components/ui/dialog.tsx"
         },
         {
           "text": "\u521b\u5efa\u7684\u8bbe\u7f6e\u5f39\u7a97\u7ec4\u4ef6\u4f7f\u7528 @/ \u522b\u540d\u5bfc\u5165 Dialog \u548c cn",
@@ -140,9 +140,9 @@
           "evidence": "Found version information display"
         },
         {
-          "text": "\u5c06\u8bbe\u7f6e\u5f39\u7a97\u96c6\u6210\u5230\u4e86 App.jsx \u4e2d",
+          "text": "\u5c06\u8bbe\u7f6e\u5f39\u7a97\u96c6\u6210\u5230\u4e86 App.tsx \u4e2d",
           "passed": true,
-          "evidence": "App.jsx imports SettingsDialog or Dialog"
+          "evidence": "App.tsx imports SettingsDialog or Dialog"
         }
       ],
       "notes": []
@@ -175,7 +175,7 @@
         {
           "text": "\u521b\u5efa\u4e86\u6e32\u67d3\u8fdb\u7a0b\u62d6\u62fd\u7ec4\u4ef6\uff0c\u5305\u542b dragover/drop \u4e8b\u4ef6\u5904\u7406",
           "passed": true,
-          "evidence": "FileDropZone.jsx exists at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-1-file-drag-import/without_skill/outputs/src/renderer/src/components/FileDropZone.jsx"
+          "evidence": "FileDropZone.tsx exists at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-1-file-drag-import/without_skill/outputs/src/renderer/src/components/FileDropZone.tsx"
         },
         {
           "text": "\u540c\u65f6\u652f\u6301\u56fe\u7247\u548c\u6587\u672c\u6587\u4ef6\u7c7b\u578b",
@@ -254,9 +254,9 @@
       },
       "expectations": [
         {
-          "text": "\u901a\u8fc7 shadcn CLI \u6dfb\u52a0\u4e86 Dialog \u7ec4\u4ef6\uff08\u68c0\u67e5 components/ui/ \u4e0b\u662f\u5426\u6709 dialog.jsx\uff09",
+          "text": "\u901a\u8fc7 shadcn CLI \u6dfb\u52a0\u4e86 Dialog \u7ec4\u4ef6\uff08\u68c0\u67e5 components/ui/ \u4e0b\u662f\u5426\u6709 dialog.tsx\uff09",
           "passed": true,
-          "evidence": "Found dialog.jsx at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-3-shadcn-dialog/without_skill/outputs/src/renderer/src/components/ui/dialog.jsx"
+          "evidence": "Found dialog.tsx at /home/liz/works/video/produce/.claude/skills/developer-workspace/iteration-1/eval-3-shadcn-dialog/without_skill/outputs/src/renderer/src/components/ui/dialog.tsx"
         },
         {
           "text": "\u521b\u5efa\u7684\u8bbe\u7f6e\u5f39\u7a97\u7ec4\u4ef6\u4f7f\u7528 @/ \u522b\u540d\u5bfc\u5165 Dialog \u548c cn",
@@ -274,9 +274,9 @@
           "evidence": "Found version information display"
         },
         {
-          "text": "\u5c06\u8bbe\u7f6e\u5f39\u7a97\u96c6\u6210\u5230\u4e86 App.jsx \u4e2d",
+          "text": "\u5c06\u8bbe\u7f6e\u5f39\u7a97\u96c6\u6210\u5230\u4e86 App.tsx \u4e2d",
           "passed": true,
-          "evidence": "App.jsx imports SettingsDialog or Dialog"
+          "evidence": "App.tsx imports SettingsDialog or Dialog"
         }
       ],
       "notes": []

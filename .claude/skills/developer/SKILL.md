@@ -20,16 +20,16 @@ description: >
 
 ## 项目概况
 
-| 项目 | 值 |
-|------|-----|
-| 框架 | Electron + React 19 |
-| 构建 | electron-vite v6 (Vite 8) |
+| 项目 | 值                                                |
+|------|--------------------------------------------------|
+| 框架 | Electron + React 19                              |
+| 构建 | electron-vite v6 (Vite 8)                        |
 | 样式 | Tailwind CSS v4 (via `@tailwindcss/vite` plugin) |
-| UI | shadcn/ui (new-york 风格, JSX) |
-| 图标 | lucide-react |
-| 包管理 | pnpm |
-| 更新 | electron-updater（GitHub provider） |
-| 打包 | electron-builder (NSIS/DMG/AppImage) |
+| UI | shadcn/ui (new-york 风格, tsx)                     |
+| 图标 | lucide-react                                     |
+| 包管理 | pnpm                                             |
+| 更新 | electron-updater（GitHub provider）                |
+| 打包 | electron-builder (NSIS/DMG/AppImage)             |
 
 ## 架构核心：三进程模型
 
@@ -111,8 +111,8 @@ description: >
 ## 项目约定
 
 ### 编码规范
-- **语言**：JavaScript (JSX)，不使用 TypeScript
-- **UI 组件**：使用 shadcn/ui，路径 `@/components/ui/*`，JSX 文件
+- **语言**：TypeScript (tsx)
+- **UI 组件**：使用 shadcn/ui，路径 `@/components/ui/*`，tsx 文件
 - **CSS**：Tailwind CSS v4（`@import 'tailwindcss'`），CSS 变量主题
 - **工具函数**：`@/lib/utils` 中的 `cn()` 用于合并 Tailwind 类名
 - **图标**：使用 `lucide-react`
