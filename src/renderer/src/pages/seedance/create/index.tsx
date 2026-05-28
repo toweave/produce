@@ -636,6 +636,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
             onPlay={handleVideoPlay}
             formatTimecode={formatTimecode}
           />
+          <canvas ref={canvasRef} className="hidden" />
           <KeyframeGrid
             capturingAuto={capturingAuto}
             autoKeyframes={autoKeyframes}
