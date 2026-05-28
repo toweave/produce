@@ -14,7 +14,7 @@ export function TwoColumnLayout({
   right
 }: TwoColumnLayoutProps): React.JSX.Element {
   return (
-    <div className="flex w-full h-full gap-4 p-4">
+    <div className="flex w-full h-full p-6 gap-6">
       <div className={leftClassName}>{left}</div>
       <div className={rightClassName}>{right}</div>
     </div>

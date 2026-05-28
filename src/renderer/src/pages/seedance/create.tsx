@@ -618,7 +618,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         />
       }
       right={
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-6">
           <VideoPlayer
             videoUrl={videoUrl}
             pollError={pollError}

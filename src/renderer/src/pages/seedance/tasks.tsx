@@ -257,8 +257,8 @@ export default function SeedanceTasksPage(): React.JSX.Element {
         leftClassName="w-2/3"
         rightClassName="w-1/3"
         left={
-          <div className="p-4 flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between">
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <ListTodoIcon className="h-6 w-6" />
                 任务列表
@@ -274,7 +274,7 @@ export default function SeedanceTasksPage(): React.JSX.Element {
             </div>
 
             {/* Filter */}
-            <div className="flex gap-2 mb-4 flex-wrap">
+            <div className="flex gap-2 flex-wrap">
               {STATUS_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}
@@ -432,7 +432,7 @@ export default function SeedanceTasksPage(): React.JSX.Element {
           </div>
         }
         right={
-          <div className="p-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-4">
             {/* Top: Video Preview */}
             <div className="rounded-lg border border-border bg-card overflow-hidden flex-1 min-h-[200px] flex flex-col">
               {!selectedId ? (

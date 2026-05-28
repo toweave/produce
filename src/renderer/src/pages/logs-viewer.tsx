@@ -70,8 +70,8 @@ export default function LogsViewer({ defaultVersion }: Props): React.JSX.Element
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
 
   return (
-    <div className="p-8 w-full">
-      <div className="flex items-center justify-between space-y-4">
+    <div className="flex flex-col p-6 w-full gap-4">
+      <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <HistoryIcon className="h-6 w-6" />
           操作日志
@@ -87,7 +87,7 @@ export default function LogsViewer({ defaultVersion }: Props): React.JSX.Element
       </div>
 
       {/* Filter */}
-      <div className="flex gap-2 mb-4 flex-wrap">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => { setOperationFilter(''); setPage(1) }}
           className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
