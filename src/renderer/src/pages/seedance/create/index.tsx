@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import { CreateForm } from './components/create-form'
-import { VideoPlayer } from './components/video-player'
 import { KeyframeGrid } from './components/keyframe-grid'
-import type { Ratio, Resolution } from './types'
+import { VideoPlayer } from '../components/video-player'
+import type { Ratio, Resolution } from '../types'
 
 const STORAGE_DIRS_KEY = 'seedance-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance-storage-current'
@@ -49,7 +49,7 @@ function captureFrameToDataUrl(video: HTMLVideoElement, canvas: HTMLCanvasElemen
 }
 
 export default function SeedanceCreatePage(): React.JSX.Element {
-  const navigate = useNavigate()
+  // const navigate = useNavigate()
 
   // Form state
   const [prompt, setPrompt] = useState('')
@@ -105,7 +105,9 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       const raw = localStorage.getItem(FORM_PARAMS_KEY)
       if (raw) {
         const saved = JSON.parse(raw)
-        if (saved.prompt) setPrompt(saved.prompt)
+        if (saved.prompt) {
+          setPrompt(saved.prompt)
+        }
         if (saved.ratio) setRatio(saved.ratio as Ratio)
         if (saved.duration !== undefined) setDuration(saved.duration)
         if (saved.resolution) setResolution(saved.resolution as Resolution)
