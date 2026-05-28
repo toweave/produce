@@ -1,10 +1,7 @@
 import { Loader2Icon } from 'lucide-react'
+import { useSeedanceCreateStore } from '@/stores/seedance-create-store'
 
 interface KeyframeGridProps {
-  capturingAuto: boolean
-  autoKeyframes: string[]
-  manualKeyframes: string[]
-  hasVideo: boolean
   onSetFirstFrame: (dataUrl: string) => void
   onSetLastFrame: (dataUrl: string) => void
   onDeleteManualKeyframe: (index: number) => void
@@ -12,15 +9,16 @@ interface KeyframeGridProps {
 }
 
 export function KeyframeGrid({
-  capturingAuto,
-  autoKeyframes,
-  manualKeyframes,
-  hasVideo,
   onSetFirstFrame,
   onSetLastFrame,
   onDeleteManualKeyframe,
   onClearAllKeyframes
 }: KeyframeGridProps): React.JSX.Element {
+  const capturingAuto = useSeedanceCreateStore((s) => s.capturingAuto)
+  const autoKeyframes = useSeedanceCreateStore((s) => s.autoKeyframes)
+  const manualKeyframes = useSeedanceCreateStore((s) => s.manualKeyframes)
+  const hasVideo = !!useSeedanceCreateStore((s) => s.videoUrl)
+
   if (capturingAuto) {
     return (
       <div className="flex-1 rounded-lg border border-border bg-card overflow-y-auto min-h-[180px] p-4">

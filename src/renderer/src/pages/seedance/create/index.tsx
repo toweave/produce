@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import { CreateForm } from './components/create-form'
@@ -10,14 +10,6 @@ const STORAGE_DIRS_KEY = 'seedance-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance-storage-current'
 const STORAGE_LAST_SESSION_KEY = 'seedance-last-session'
 const FORM_PARAMS_KEY = 'seedance-form-params'
-
-function formatTimecode(seconds: number, fps = 24): string {
-  const h = Math.floor(seconds / 3600)
-  const m = Math.floor((seconds % 3600) / 60)
-  const s = Math.floor(seconds % 60)
-  const f = Math.floor((seconds - Math.floor(seconds)) * fps)
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`
-}
 
 function seekVideo(video: HTMLVideoElement, time: number): Promise<void> {
   return new Promise((resolve) => {
@@ -48,28 +40,14 @@ function captureFrameToDataUrl(video: HTMLVideoElement, canvas: HTMLCanvasElemen
 }
 
 export default function SeedanceCreatePage(): React.JSX.Element {
-  // Task state
-  const [taskStatus, setTaskStatus] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
-  const [pollError, setPollError] = useState('')
-
-  // Player state
+  // DOM refs (shared with VideoPlayer via prop)
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const justCreated = useRef(false)
   const blobUrlRef = useRef<string | null>(null)
-  const [isPlaying, setIsPlaying] = useState(false)
-  const [hasInteracted, setHasInteracted] = useState(false)
-  const [currentTime, setCurrentTime] = useState(0)
-  const [capturingAuto, setCapturingAuto] = useState(false)
-
-  // Keyframes state
-  const [autoKeyframes, setAutoKeyframes] = useState<string[]>([])
-  const [manualKeyframes, setManualKeyframes] = useState<string[]>([])
-  const [captureFlash, setCaptureFlash] = useState(false)
 
   // Store selectors
   const currentDir = useSeedanceCreateStore((s) => s.currentDir)
+  const videoUrl = useSeedanceCreateStore((s) => s.videoUrl)
   const setImageData = useSeedanceCreateStore((s) => s.setImageData)
   const setLastFrameData = useSeedanceCreateStore((s) => s.setLastFrameData)
   const setUseLastFrame = useSeedanceCreateStore((s) => s.setUseLastFrame)
@@ -212,7 +190,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 const blob = new Blob([buffer], { type: 'video/mp4' })
                 if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
                 blobUrlRef.current = URL.createObjectURL(blob)
-                setVideoUrl(blobUrlRef.current)
+                useSeedanceCreateStore.getState().setVideoUrl(blobUrlRef.current)
                 remoteUrl = ''
               } catch { /* file unavailable */ }
             }
@@ -233,7 +211,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
                 const blob = new Blob([buffer], { type: 'video/mp4' })
                 if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
                 blobUrlRef.current = URL.createObjectURL(blob)
-                setVideoUrl(blobUrlRef.current)
+                useSeedanceCreateStore.getState().setVideoUrl(blobUrlRef.current)
                 foundLocal = true
               }
             }
@@ -250,21 +228,21 @@ export default function SeedanceCreatePage(): React.JSX.Element {
               const blob = new Blob([buffer], { type: 'video/mp4' })
               if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
               blobUrlRef.current = URL.createObjectURL(blob)
-              setVideoUrl(blobUrlRef.current)
+              useSeedanceCreateStore.getState().setVideoUrl(blobUrlRef.current)
               localStorage.setItem(
                 STORAGE_LAST_SESSION_KEY,
                 JSON.stringify({ taskId, remoteUrl, localPath, dir: currentDir })
               )
             } catch {
-              setVideoUrl(remoteUrl)
+              useSeedanceCreateStore.getState().setVideoUrl(remoteUrl)
             }
           }
         }
 
         const result = await window.api.file.readKeyframes({ dir: currentDir, taskId })
         const autoFrames = result.autoFrames.filter(Boolean) as string[]
-        if (autoFrames.length > 0) setAutoKeyframes(autoFrames)
-        if (result.manualFrames.length > 0) setManualKeyframes(result.manualFrames)
+        if (autoFrames.length > 0) useSeedanceCreateStore.getState().setAutoKeyframes(autoFrames)
+        if (result.manualFrames.length > 0) useSeedanceCreateStore.getState().setManualKeyframes(result.manualFrames)
       } catch { /* ignore */ }
     }
     restoreSession()
@@ -278,7 +256,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       try {
         const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
         const status = String(result.status || '')
-        setTaskStatus(status)
+        useSeedanceCreateStore.getState().setTaskStatus(status)
 
         if (status === 'succeeded') {
           stopped = true
@@ -299,25 +277,29 @@ export default function SeedanceCreatePage(): React.JSX.Element {
             const blob = new Blob([buffer], { type: 'video/mp4' })
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
             blobUrlRef.current = URL.createObjectURL(blob)
-            setVideoUrl(blobUrlRef.current)
+            useSeedanceCreateStore.getState().setVideoUrl(blobUrlRef.current)
 
             localStorage.setItem(
               STORAGE_LAST_SESSION_KEY,
               JSON.stringify({ taskId, remoteUrl, localPath, dir: currentDir })
             )
           } catch {
-            setVideoUrl(remoteUrl)
+            useSeedanceCreateStore.getState().setVideoUrl(remoteUrl)
           }
         } else if (status === 'failed') {
           stopped = true
           const errObj = result.error as Record<string, unknown> | undefined
-          setPollError(errObj?.message ? String(errObj.message) : '视频生成失败')
+          useSeedanceCreateStore.getState().setPollError(
+            errObj?.message ? String(errObj.message) : '视频生成失败'
+          )
         } else if (status === 'cancelled' || status === 'expired') {
           stopped = true
-          setPollError(`任务已${status === 'cancelled' ? '取消' : '过期'}`)
+          useSeedanceCreateStore.getState().setPollError(
+            `任务已${status === 'cancelled' ? '取消' : '过期'}`
+          )
         }
       } catch {
-        setPollError('查询任务状态失败')
+        useSeedanceCreateStore.getState().setPollError('查询任务状态失败')
         stopped = true
       }
     }
@@ -338,14 +320,14 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     s.setError('')
     s.setApiKeyMissing(false)
     s.setSubmitting(true)
-    setTaskStatus('')
-    setVideoUrl('')
-    setPollError('')
-    setAutoKeyframes([])
-    setManualKeyframes([])
-    setCurrentTime(0)
-    setIsPlaying(false)
-    setHasInteracted(false)
+    s.setTaskStatus('')
+    s.setVideoUrl('')
+    s.setPollError('')
+    s.setCurrentTime(0)
+    s.setIsPlaying(false)
+    s.setHasInteracted(false)
+    s.setAutoKeyframes([])
+    s.setManualKeyframes([])
 
     try {
       const content: { type: string; text?: string; image_url?: { url: string }; role?: string }[] = [
@@ -371,7 +353,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
       const result = await window.api.seedance.createTask(params) as { id: string }
       useSeedanceCreateStore.getState().setCreatedId(result.id)
-      setTaskStatus('queued')
+      s.setTaskStatus('queued')
       pollTask(result.id)
 
       try {
@@ -419,7 +401,8 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     const video = videoRef.current
 
     const doAutoCapture = async (): Promise<void> => {
-      setCapturingAuto(true)
+      useSeedanceCreateStore.getState().setCapturingAuto(true)
+
       if (!video.duration || video.duration === 0) {
         await new Promise<void>((resolve) => {
           const handler = (): void => {
@@ -463,75 +446,42 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         } catch { /* skip failed frame */ }
       }
 
-      setAutoKeyframes(frames)
-      setCapturingAuto(false)
+      useSeedanceCreateStore.getState().setAutoKeyframes(frames)
+      useSeedanceCreateStore.getState().setCapturingAuto(false)
       video.currentTime = 0
     }
 
     doAutoCapture()
   }, [videoUrl])
 
-  const handleCaptureKeyframe = useCallback(async (): Promise<void> => {
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    if (!video || !canvas) return
-
-    const dataUrl = captureFrameToDataUrl(video, canvas)
-    if (!dataUrl || !dataUrl.match(/^data:image\//)) return
-
-    const index = manualKeyframes.length
-    setManualKeyframes((prev) => [...prev, dataUrl])
-    setCaptureFlash(true)
-    setTimeout(() => setCaptureFlash(false), 300)
-
+  const handleDeleteManualKeyframe = useCallback(async (index: number): Promise<void> => {
+    if (!window.confirm('确定删除此关键帧？')) return
     try {
-      const { currentDir, createdId } = useSeedanceCreateStore.getState()
-      await window.api.file.saveKeyframe({
-        base64Data: dataUrl,
-        destDir: currentDir,
-        filename: `Seedance_${createdId}_manual_${index}`
-      })
-      const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
-      if (raw) {
-        const session = JSON.parse(raw)
-        session.manualCount = index + 1
-        localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify(session))
+      const { currentDir, createdId, manualKeyframes } = useSeedanceCreateStore.getState()
+      await window.api.file.deleteFile(
+        `${currentDir}/Seedance_${createdId}_manual_${index}.png`
+      )
+      for (let i = index + 1; i < manualKeyframes.length; i++) {
+        const oldFilename = `Seedance_${createdId}_manual_${i}`
+        const newFilename = `Seedance_${createdId}_manual_${i - 1}`
+        await window.api.file.saveKeyframe({
+          base64Data: manualKeyframes[i],
+          destDir: currentDir,
+          filename: newFilename
+        })
+        await window.api.file.deleteFile(`${currentDir}/${oldFilename}.png`)
       }
+      useSeedanceCreateStore.getState().removeManualKeyframe(index)
     } catch {
-      console.error('关键帧保存失败')
+      console.error('删除关键帧失败:')
     }
-  }, [manualKeyframes])
-
-  const handleDeleteManualKeyframe = useCallback(
-    async (index: number): Promise<void> => {
-      if (!window.confirm('确定删除此关键帧？')) return
-      try {
-        const { currentDir, createdId } = useSeedanceCreateStore.getState()
-        await window.api.file.deleteFile(
-          `${currentDir}/Seedance_${createdId}_manual_${index}.png`
-        )
-        for (let i = index + 1; i < manualKeyframes.length; i++) {
-          const oldFilename = `Seedance_${createdId}_manual_${i}`
-          const newFilename = `Seedance_${createdId}_manual_${i - 1}`
-          await window.api.file.saveKeyframe({
-            base64Data: manualKeyframes[i],
-            destDir: currentDir,
-            filename: newFilename
-          })
-          await window.api.file.deleteFile(`${currentDir}/${oldFilename}.png`)
-        }
-        setManualKeyframes((prev) => prev.filter((_, i) => i !== index))
-      } catch {
-        console.error('删除关键帧失败:')
-      }
-    },
-    [manualKeyframes]
-  )
+  }, [])
 
   const handleClearAllKeyframes = useCallback(async (): Promise<void> => {
     if (!window.confirm('确定清空所有关键帧？此操作不可撤销')) return
     try {
-      const { currentDir, createdId } = useSeedanceCreateStore.getState()
+      const { currentDir, createdId, autoKeyframes, manualKeyframes } =
+        useSeedanceCreateStore.getState()
       for (let i = 0; i < autoKeyframes.length; i++) {
         await window.api.file
           .deleteFile(`${currentDir}/Seedance_${createdId}_keyframe_${i}.png`)
@@ -543,9 +493,8 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           .catch(() => {})
       }
     } catch { /* ignore */ }
-    setAutoKeyframes([])
-    setManualKeyframes([])
-  }, [autoKeyframes, manualKeyframes])
+    useSeedanceCreateStore.getState().clearKeyframes()
+  }, [])
 
   // Keyboard controls (frame stepping when paused)
   useEffect(() => {
@@ -566,62 +515,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     return () => window.removeEventListener('keydown', handler)
   }, [])
 
-  // Player controls
-  const handlePlayPause = (): void => {
-    const video = videoRef.current
-    if (!video) return
-    if (video.paused) {
-      video.play().catch(() => setIsPlaying(false))
-    } else {
-      video.pause()
-    }
-    if (!hasInteracted) setHasInteracted(true)
-  }
-
-  const handleVideoTimeUpdate = (): void => {
-    const video = videoRef.current
-    if (video) setCurrentTime(video.currentTime)
-  }
-
-  const handleVideoPause = (): void => {
-    setIsPlaying(false)
-    if (!hasInteracted) setHasInteracted(true)
-  }
-
-  const handleVideoPlay = (): void => setIsPlaying(true)
-
   return (
     <TwoColumnLayout
       left={<CreateForm onSubmit={handleSubmit} />}
       right={
         <div className="flex flex-col gap-4">
-          <VideoPlayer
-            videoUrl={videoUrl}
-            pollError={pollError}
-            createdId={useSeedanceCreateStore.getState().createdId}
-            taskStatus={taskStatus}
-            isPlaying={isPlaying}
-            currentTime={currentTime}
-            captureFlash={captureFlash}
-            videoRef={videoRef}
-            onPlayPause={handlePlayPause}
-            onCaptureKeyframe={handleCaptureKeyframe}
-            onReset={() => {
-              useSeedanceCreateStore.getState().setCreatedId('')
-              setTaskStatus('')
-              setPollError('')
-            }}
-            onTimeUpdate={handleVideoTimeUpdate}
-            onPause={handleVideoPause}
-            onPlay={handleVideoPlay}
-            formatTimecode={formatTimecode}
-          />
-          <canvas ref={canvasRef} className="hidden" />
+          <VideoPlayer videoRef={videoRef} />
           <KeyframeGrid
-            capturingAuto={capturingAuto}
-            autoKeyframes={autoKeyframes}
-            manualKeyframes={manualKeyframes}
-            hasVideo={!!videoUrl}
             onSetFirstFrame={(dataUrl) => setImageData(dataUrl)}
             onSetLastFrame={(dataUrl) => {
               setLastFrameData(dataUrl)
