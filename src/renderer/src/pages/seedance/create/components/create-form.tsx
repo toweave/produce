@@ -112,7 +112,7 @@ export function CreateForm({
   const navigate = useNavigate()
 
   return (
-    <div className="space-y-6 overflow-y-auto">
+    <div className="flex flex-col gap-4 overflow-y-auto">
       {/* Title */}
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
