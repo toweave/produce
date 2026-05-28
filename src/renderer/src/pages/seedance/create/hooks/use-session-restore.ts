@@ -10,7 +10,7 @@ export function useSessionRestore(currentDir: string): void {
   useEffect(() => {
     if (!currentDir) return
 
-    const restore = async () => {
+    const restore = async (): Promise<void> => {
       try {
         let taskId: string | null = null
         let remoteUrl = ''
