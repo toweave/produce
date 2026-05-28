@@ -1,0 +1,39 @@
+{
+  "eval_id": 5,
+  "eval_name": "shadcn-form-tailwind",
+  "prompt": "使用 shadcn 组件创建一个用户资料编辑表单页面，包含：用户名输入框、邮箱输入框、性别选择（Select 组件）、头像上传区域、保存按钮。使用 Tailwind CSS utility classes 完成所有样式，不使用自定义 CSS。表单字段使用 zustand store 管理，不通过 props 层层传递。",
+  "assertions": [
+    {
+      "text": "创建了 zustand store 管理表单状态（如 stores/profile-store.ts）",
+      "type": "factual"
+    },
+    {
+      "text": "使用了 shadcn 的 Input, Select, Button 等组件",
+      "type": "factual"
+    },
+    {
+      "text": "组件 props 数量不超过 10 个",
+      "type": "factual"
+    },
+    {
+      "text": "使用 cn() 函数合并 Tailwind 类名",
+      "type": "factual"
+    },
+    {
+      "text": "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件",
+      "type": "factual"
+    },
+    {
+      "text": "使用了语义化颜色名称（如 bg-card, text-muted-foreground, border-border）",
+      "type": "factual"
+    },
+    {
+      "text": "使用了 lucide-react 图标",
+      "type": "factual"
+    },
+    {
+      "text": "表单字段值通过 store action 更新而非 props 回调",
+      "type": "factual"
+    }
+  ]
+}

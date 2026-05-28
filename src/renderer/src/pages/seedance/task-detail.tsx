@@ -4,47 +4,9 @@ import { ArrowLeftIcon, Loader2Icon, Trash2Icon, FileTextIcon, XIcon } from 'luc
 import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import VideoPlayer from '@/components/video-player'
-
-interface ContentInfo {
-  video_url?: string
-  last_frame_url?: string
-}
-
-interface TaskDetail {
-  id: string
-  status: string
-  model: string
-  created_at: number
-  updated_at: number
-  content?: ContentInfo
-  error?: { code: string; message: string } | null
-  duration?: number
-  ratio?: string
-  resolution?: string
-  seed?: number
-  framespersecond?: number
-  generate_audio?: boolean
-  service_tier?: string
-  usage?: { completion_tokens: number; total_tokens: number }
-}
-
-const STATUS_LABEL: Record<string, string> = {
-  queued: '排队中',
-  running: '运行中',
-  succeeded: '已完成',
-  failed: '失败',
-  cancelled: '已取消',
-  expired: '已过期'
-}
-
-const STATUS_BADGE: Record<string, string> = {
-  queued: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
-  running: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
-  succeeded: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
-  failed: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  cancelled: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
-  expired: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400'
-}
+import { StatusBadge } from './components/status-badge'
+import { InfoItem } from './components/info-item'
+import type { TaskDetail } from './types'
 
 export default function SeedanceTaskDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
@@ -65,7 +27,10 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
   const blobUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    window.api.file.getDefaultPath().then((dir) => setStorageDir(dir)).catch(() => {})
+    window.api.file
+      .getDefaultPath()
+      .then((dir) => setStorageDir(dir))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -74,39 +39,47 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
     }
   }, [])
 
-  const fetchTask = useCallback(async (): Promise<void> => {
+  const fetchTask = useCallback(async () => {
     if (!id) return
     try {
-      const result = await window.api.seedance.getTask(id) as TaskDetail
+      const result = (await window.api.seedance.getTask(id)) as TaskDetail
       setTask(result)
 
       try {
-        const log = await window.api.logs.getTaskLog(id) as Record<string, unknown> | null
+        const log = (await window.api.logs.getTaskLog(id)) as Record<string, unknown> | null
         setLogEntry(log)
       } catch {
-        // Best-effort
+        /* Best-effort */
       }
 
-      // Load task params with reference images
       try {
-        const params = await window.api.taskParams.getByTaskId(id) as Record<string, unknown> | null
+        const params = (await window.api.taskParams.getByTaskId(id)) as Record<
+          string,
+          unknown
+        > | null
         setTaskParams(params)
         if (params) {
           if (params.first_frame_path && storageDir) {
-            const data = await window.api.file.resolveImagePath({ storageDir, relativePath: params.first_frame_path as string })
+            const data = await window.api.file.resolveImagePath({
+              storageDir,
+              relativePath: params.first_frame_path as string
+            })
             setFirstFrameDisplay(data || (params.first_frame_data as string) || null)
           } else {
             setFirstFrameDisplay((params.first_frame_data as string) || null)
           }
           if (params.last_frame_path && storageDir) {
-            const data = await window.api.file.resolveImagePath({ storageDir, relativePath: params.last_frame_path as string })
+            const data = await window.api.file.resolveImagePath({
+              storageDir,
+              relativePath: params.last_frame_path as string
+            })
             setLastFrameDisplay(data || (params.last_frame_data as string) || null)
           } else {
             setLastFrameDisplay((params.last_frame_data as string) || null)
           }
         }
       } catch {
-        // Task params may not exist yet
+        /* Task params may not exist yet */
       }
 
       if (result.status === 'succeeded' && result.content?.video_url) {
@@ -129,10 +102,13 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
 
         try {
           const frames = await window.api.file.readKeyframes({ dir: storageDir, taskId: id })
-          const allFrames: string[] = [...(frames.autoFrames.filter(Boolean) as string[]), ...(frames.manualFrames as string[])]
+          const allFrames: string[] = [
+            ...(frames.autoFrames.filter(Boolean) as string[]),
+            ...(frames.manualFrames as string[])
+          ]
           if (allFrames.length > 0) setKeyframes(allFrames)
         } catch {
-          // No keyframes saved yet
+          /* No keyframes saved yet */
         }
       }
 
@@ -156,45 +132,40 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
     return () => clearTimeout(timer)
   }, [task, fetchTask])
 
-  const handleDelete = async (): Promise<void> => {
+  const handleDelete = async () => {
     if (!id) return
     setDeleting(true)
     try {
       await window.api.seedance.deleteTask(id)
       navigate('/seedance/tasks')
-    } catch (err) {
-      console.error('Delete failed:', err)
+    } catch {
       setDeleting(false)
     }
   }
 
-  const handleDownload = useCallback(async (): Promise<void> => {
+  const handleDownload = useCallback(async () => {
     if (!task?.content?.video_url) return
     try {
-      const filename = `Seedance_${task.id}_${Date.now()}`
       await window.api.file.downloadVideo({
         url: task.content.video_url,
         destDir: storageDir,
-        filename
+        filename: `Seedance_${task.id}_${Date.now()}`
       })
-    } catch (err) {
-      console.error('Download failed:', err)
+    } catch {
+      /* fail silently */
     }
   }, [task, storageDir])
 
-  const handleKeyframeCapture = useCallback((dataUrl: string): void => {
+  const handleKeyframeCapture = useCallback((dataUrl: string) => {
     setKeyframes((prev) => [...prev, dataUrl])
   }, [])
 
   const getPrompt = (): string => {
-    // Prefer taskParams (dedicated storage, more reliable)
     if (taskParams?.prompt) return taskParams.prompt as string
-    // Fall back to operation log
     if (logEntry?.prompt) return logEntry.prompt as string
     if (logEntry?.params) {
       try {
-        const rawParams = logEntry.params as string
-        const parsed = JSON.parse(rawParams)
+        const parsed = JSON.parse(logEntry.params as string)
         const content = parsed.content || []
         const textItem = content.find((c: { type: string; text?: string }) => c.type === 'text')
         return textItem?.text || ''
@@ -271,13 +242,12 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
                     <p className="text-xs font-medium text-muted-foreground mb-3">关键帧</p>
                     <div className="grid grid-cols-4 gap-2">
                       {keyframes.map((dataUrl, i) => (
-                        <div key={i} className="relative group">
-                          <img
-                            src={dataUrl}
-                            alt={`关键帧 ${i + 1}`}
-                            className="w-full rounded border border-border object-cover aspect-video"
-                          />
-                        </div>
+                        <img
+                          key={i}
+                          src={dataUrl}
+                          alt={`关键帧 ${i + 1}`}
+                          className="w-full rounded border border-border object-cover aspect-video"
+                        />
                       ))}
                     </div>
                   </div>
@@ -301,46 +271,23 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
               </div>
             )}
 
-            {/* Reference Images */}
             {(firstFrameDisplay || lastFrameDisplay) && (
               <div className="rounded-lg border border-border bg-card p-4 mb-4">
                 <p className="text-xs font-medium text-muted-foreground mb-3">参考图片</p>
                 <div className="flex gap-3">
                   {firstFrameDisplay && (
-                    <div
-                      className="relative group cursor-pointer"
+                    <RefImage
+                      src={firstFrameDisplay}
+                      label="首帧"
                       onClick={() => setZoomImage(firstFrameDisplay)}
-                    >
-                      <img
-                        src={firstFrameDisplay}
-                        alt="首帧"
-                        className="h-24 w-auto rounded border border-border object-cover"
-                      />
-                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                        首帧
-                      </span>
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                        <span className="text-xs text-white">点击放大</span>
-                      </div>
-                    </div>
+                    />
                   )}
                   {lastFrameDisplay && (
-                    <div
-                      className="relative group cursor-pointer"
+                    <RefImage
+                      src={lastFrameDisplay}
+                      label="尾帧"
                       onClick={() => setZoomImage(lastFrameDisplay)}
-                    >
-                      <img
-                        src={lastFrameDisplay}
-                        alt="尾帧"
-                        className="h-24 w-auto rounded border border-border object-cover"
-                      />
-                      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
-                        尾帧
-                      </span>
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-                        <span className="text-xs text-white">点击放大</span>
-                      </div>
-                    </div>
+                    />
                   )}
                 </div>
               </div>
@@ -360,16 +307,12 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
         right={
           <div className="flex flex-col gap-4">
             <div className="flex items-center">
-              <span
-                className={`mr-4 inline-flex rounded-full px-4 py-2 text-xs font-medium ${STATUS_BADGE[task.status] || ''}`}
-              >
-                {STATUS_LABEL[task.status] || task.status}
-              </span>
+              <StatusBadge status={task.status} />
               {['queued', 'succeeded', 'failed', 'expired'].includes(task.status) && (
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
+                  className="ml-4 inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
                 >
                   <Trash2Icon className="h-4 w-4" />
                   {deleting ? '删除中...' : '删除'}
@@ -425,35 +368,30 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
         </div>
       )}
 
-      {/* Image zoom modal */}
-      {zoomImage && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer"
-          onClick={() => setZoomImage(null)}
-        >
-          <button
-            onClick={() => setZoomImage(null)}
-            className="absolute top-4 right-4 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
-          >
-            <XIcon className="h-5 w-5" />
-          </button>
-          <img
-            src={zoomImage}
-            alt="参考图片"
-            className="max-w-[90vw] max-h-[90vh] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+      {zoomImage && <ImageZoomModal src={zoomImage} onClose={() => setZoomImage(null)} />}
     </div>
   )
 }
 
-function InfoItem({ label, value }: { label: string; value: string }): React.JSX.Element {
+function RefImage({ src, label, onClick }: { src: string; label: string; onClick: () => void }) {
   return (
-    <div>
-      <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-      <p className="text-sm font-medium truncate">{value || '-'}</p>
+    <div className="relative group cursor-pointer" onClick={onClick}>
+      <img src={src} alt={label} className="h-24 w-auto rounded border border-border object-cover" />
+      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">{label}</span>
+      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
+        <span className="text-xs text-white">点击放大</span>
+      </div>
+    </div>
+  )
+}
+
+function ImageZoomModal({ src, onClose }: { src: string; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer" onClick={onClose}>
+      <button onClick={onClose} className="absolute top-4 right-4 rounded-full bg-black/60 p-2 text-white hover:bg-black/80">
+        <XIcon className="h-5 w-5" />
+      </button>
+      <img src={src} alt="参考图片" className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
     </div>
   )
 }

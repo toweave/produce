@@ -1,8 +1,7 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { PlayIcon, CameraIcon, DownloadIcon, Loader2Icon } from 'lucide-react'
 
-function formatTimecode(seconds, fps) {
-  fps = fps || 24
+function formatTimecode(seconds: number, fps = 24) {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
   const s = Math.floor(seconds % 60)
@@ -10,7 +9,7 @@ function formatTimecode(seconds, fps) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}:${String(f).padStart(2, '0')}`
 }
 
-function captureFrameToDataUrl(video, canvas) {
+function captureFrameToDataUrl(video: HTMLVideoElement, canvas: HTMLCanvasElement): string {
   canvas.width = video.videoWidth
   canvas.height = video.videoHeight
   const ctx = canvas.getContext('2d')
@@ -23,9 +22,17 @@ function captureFrameToDataUrl(video, canvas) {
   }
 }
 
-export default function VideoPlayer({ videoUrl, taskId, storageDir, onKeyframeCapture, onDownload }) {
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
+interface VideoPlayerProps {
+  videoUrl: string
+  taskId: string
+  storageDir?: string
+  onKeyframeCapture?: (dataUrl: string) => void
+  onDownload?: () => void
+}
+
+export default function VideoPlayer({ videoUrl, taskId, storageDir, onKeyframeCapture, onDownload }: VideoPlayerProps) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [isHovering, setIsHovering] = useState(false)

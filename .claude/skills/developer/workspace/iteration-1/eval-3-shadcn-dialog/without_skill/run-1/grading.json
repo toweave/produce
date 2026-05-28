@@ -1,0 +1,80 @@
+{
+  "expectations": [
+    {
+      "name": "使用了 shadcn CLI 命令添加 Dialog 组件",
+      "evidence": "outputs/src/renderer/src/components/ui/dialog.tsx 文件中的 Dialog 组件是手动编写的，而非 shadcn CLI 生成。证据：(1) 组件从 'radix-ui' 导入（import { Dialog as DialogPrimitive } from \"radix-ui\"），而 shadcn CLI 会生成从 '@radix-ui/react-dialog' 的导入；(2) 缺少 shadcn CLI 自动生成的头部注释；(3) 组件结构模式（使用 data-slot 属性）与标准 shadcn CLI 生成的 Dialog 组件不一致；(4) 没有任何终端命令或日志文件表明 pnpm dlx shadcn@latest add dialog 被执行过。",
+      "passed": false,
+      "text": "使用了 shadcn CLI 命令添加 Dialog 组件（pnpm dlx shadcn@latest add dialog）"
+    },
+    {
+      "name": "设置弹窗组件使用 @/ 别名导入 Dialog",
+      "evidence": "settings-dialog.tsx 第 6-14 行使用 '@/' 别名导入 Dialog 组件：import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from \"@/components/ui/dialog\"",
+      "passed": true,
+      "text": "创建的设置弹窗组件使用 @/ 别名导入 Dialog（如 @/components/ui/dialog）"
+    },
+    {
+      "name": "使用 cn() 函数合并 Tailwind 类名",
+      "evidence": "dialog.tsx 第 5 行从 '@/lib/utils' 导入 cn()，并在 DialogOverlay（第 37 行）、DialogContent（第 59 行）、DialogHeader（第 87 行）、DialogFooter（第 97 行）、DialogTitle（第 110 行）、DialogDescription（第 123 行）中作为 className 合并函数使用。",
+      "passed": true,
+      "text": "使用 cn() 函数合并 Tailwind 类名"
+    },
+    {
+      "name": "所有样式使用 Tailwind utility classes",
+      "evidence": "两个文件中所有样式均使用 Tailwind utility class（如 fixed, inset-0, z-50, flex, gap-4, p-6, text-xs/relaxed 等），没有自定义 CSS 文件存在。",
+      "passed": true,
+      "text": "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件"
+    },
+    {
+      "name": "使用了语义化颜色名称",
+      "evidence": "多处使用了语义化颜色名称：settings-dialog.tsx 第 41/43/61 行使用 text-muted-foreground（应用于 MoonIcon、SunIcon、版本标签）；dialog.tsx 第 60 行使用 bg-background；第 110 行使用 text-foreground；第 123 行使用 text-muted-foreground。",
+      "passed": true,
+      "text": "使用了语义化颜色名称（如 bg-card, text-muted-foreground, border-border）"
+    },
+    {
+      "name": "使用了 lucide-react 图标",
+      "evidence": "settings-dialog.tsx 第 15 行从 lucide-react 导入 SettingsIcon、MoonIcon、SunIcon 三个图标，并在组件中使用。dialog.tsx 第 3 行从 lucide-react 导入 XIcon。",
+      "passed": true,
+      "text": "使用了 lucide-react 图标"
+    },
+    {
+      "name": "设置弹窗包含主题切换开关",
+      "evidence": "settings-dialog.tsx 第 37-55 行实现了主题切换功能：使用 useTheme() hook 获取 theme 和 toggleTheme，通过 Switch 组件绑定 dark/light 模式切换，MoonIcon/SunIcon 状态图标根据当前主题动态渲染。",
+      "passed": true,
+      "text": "设置弹窗包含主题切换开关"
+    },
+    {
+      "name": "设置弹窗显示版本信息",
+      "evidence": "settings-dialog.tsx 第 17 行定义 APP_VERSION = \"1.0.0\"，第 59-63 行在页面中显示 '应用版本' 标签和对应的版本号。",
+      "passed": true,
+      "text": "设置弹窗显示版本信息"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 1,
+    "total": 8,
+    "pass_rate": 0.875
+  },
+  "claims": [
+    {
+      "claim": "Dialog 组件使用 Radix UI 的 Dialog primitive 实现",
+      "evidence": "dialog.tsx 第 8 行：function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) 使用从 'radix-ui' 导入的 DialogPrimitive 作为底层组件",
+      "source": "outputs/src/renderer/src/components/ui/dialog.tsx"
+    },
+    {
+      "claim": "设置弹窗支持暗色和亮色模式切换",
+      "evidence": "settings-dialog.tsx 第 40-47 行根据 theme 状态渲染 MoonIcon（暗色）或 SunIcon（亮色），并显示对应中文文本 '暗色模式' 或 '亮色模式'",
+      "source": "outputs/src/renderer/src/components/settings-dialog.tsx"
+    },
+    {
+      "claim": "版本号硬编码为 1.0.0",
+      "evidence": "settings-dialog.tsx 第 17 行：const APP_VERSION = \"1.0.0\"",
+      "source": "outputs/src/renderer/src/components/settings-dialog.tsx"
+    },
+    {
+      "claim": "主题管理通过自定义 useTheme hook 实现",
+      "evidence": "settings-dialog.tsx 第 1 行：import { useTheme } from \"@/hooks/use-theme\"，第 20 行解构获取 theme 和 toggleTheme",
+      "source": "outputs/src/renderer/src/components/settings-dialog.tsx"
+    }
+  ]
+}

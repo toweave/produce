@@ -1,4 +1,4 @@
-import { useState, type RefObject, useRef } from 'react'
+import React, { useState, type RefObject, useRef } from 'react'
 import { VideoIcon, Loader2Icon, PlayIcon, CameraIcon } from 'lucide-react'
 import { useSeedanceCreateStore } from '@/stores/seedance-create-store'
 
@@ -31,27 +31,26 @@ export function VideoPlayer({ videoRef }: VideoPlayerProps): React.JSX.Element {
   const handlePlayPause = (): void => {
     const video = videoRef.current
     if (!video) return
-    const { setIsPlaying, setHasInteracted } = useSeedanceCreateStore.getState()
+    const store = useSeedanceCreateStore.getState()
     if (video.paused) {
-      video.play().catch(() => setIsPlaying(false))
+      video.play().catch(() => store.update({ isPlaying: false }))
     } else {
       video.pause()
     }
-    setHasInteracted(true)
+    store.update({ hasInteracted: true })
   }
 
   const handleTimeUpdate = (): void => {
     const video = videoRef.current
-    if (video) useSeedanceCreateStore.getState().setCurrentTime(video.currentTime)
+    if (video) useSeedanceCreateStore.getState().update({ currentTime: video.currentTime })
   }
 
   const handlePause = (): void => {
-    useSeedanceCreateStore.getState().setIsPlaying(false)
-    useSeedanceCreateStore.getState().setHasInteracted(true)
+    useSeedanceCreateStore.getState().update({ isPlaying: false, hasInteracted: true })
   }
 
   const handlePlay = (): void => {
-    useSeedanceCreateStore.getState().setIsPlaying(true)
+    useSeedanceCreateStore.getState().update({ isPlaying: true })
   }
 
   const handleCaptureKeyframe = (): void => {
@@ -68,7 +67,7 @@ export function VideoPlayer({ videoRef }: VideoPlayerProps): React.JSX.Element {
           {!createdId ? (
             <>
               <VideoIcon className="h-10 w-10" />
-              <span className="text-sm">填写左侧参数后点击"生成视频"</span>
+              <span className="text-sm">填写左侧参数后点击&#34;生成视频&#34;</span>
             </>
           ) : (
             <>

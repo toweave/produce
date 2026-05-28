@@ -1,0 +1,31 @@
+{
+  "eval_id": 4,
+  "eval_name": "zustand-component-refactor",
+  "prompt": "我有一个视频播放器组件 VideoPlayer，它通过父组件传递了 15 个 props（videoUrl, isPlaying, currentTime, onPlay, onPause, onTimeUpdate, onCaptureFrame, capturing, hasError, errorMessage, videoRef, volume, muted, playbackRate, onRateChange）。请重构这个组件，使用 zustand store 来管理共享状态，减少 props 数量。注意组件 props 不超过 10 个的原则，相关的 props 组合成对象传递。",
+  "assertions": [
+    {
+      "text": "创建了专门的 zustand store 文件（如 stores/player-store.ts）",
+      "type": "factual"
+    },
+    {
+      "text": "VideoPlayer 组件 props 数量不超过 5 个",
+      "type": "factual"
+    },
+    {
+      "text": "组件从 store 读取状态使用单个字段选择器模式（如 useStore(s => s.videoUrl)）",
+      "type": "factual"
+    },
+    {
+      "text": "播放控制方法在 store 中作为 compound action 实现",
+      "type": "factual"
+    },
+    {
+      "text": "使用了函数式组件声明：export function VideoPlayer()",
+      "type": "factual"
+    },
+    {
+      "text": "相关的 props 组合成对象传递而非扁平展开",
+      "type": "factual"
+    }
+  ]
+}

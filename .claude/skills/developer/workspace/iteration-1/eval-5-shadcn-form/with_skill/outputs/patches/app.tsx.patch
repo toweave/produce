@@ -1,0 +1,15 @@
+--- a/src/renderer/src/App.tsx
++++ b/src/renderer/src/App.tsx
+@@ -15,6 +15,7 @@ import SeedreamLogsPage from '@/pages/seedream/logs'
+ import LogsViewer from '@/pages/logs-viewer'
+ import SettingsKeysPage from '@/pages/settings-keys'
++import ProfilePage from '@/pages/profile'
+
+ function App(): React.JSX.Element {
+   return (
+@@ -22,6 +23,7 @@ function App(): React.JSX.Element {
+       <Route element={<Layout />}>
+         <Route path="/home" element={<HomePage />} />
++        <Route path="/profile" element={<ProfilePage />} />
+         <Route path="/playground/history" element={<PlaceholderPage title="History" />} />
+         <Route path="/playground/starred" element={<PlaceholderPage title="Starred" />} />

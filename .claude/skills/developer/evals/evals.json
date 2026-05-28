@@ -39,9 +39,44 @@
       "expectations": [
         "通过 shadcn CLI 添加了 Dialog 组件",
         "创建的设置弹窗组件使用 @/ 别名导入 Dialog 和 cn",
-        "设置弹窗包含一个主题切换开关",
-        "设置弹窗显示版本信息",
-        "将设置弹窗集成到了 App.tsx 中"
+        "使用 cn() 函数合并 Tailwind 类名",
+        "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件",
+        "使用了语义化颜色名称（如 bg-card, text-muted-foreground）",
+        "使用了 lucide-react 图标",
+        "设置弹窗包含主题切换开关",
+        "设置弹窗显示版本信息"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "zustand 组件状态重构",
+      "prompt": "我有一个视频播放器组件 VideoPlayer，它通过父组件传递了 15 个 props（videoUrl, isPlaying, currentTime, onPlay, onPause, onTimeUpdate, onCaptureFrame, capturing, hasError, errorMessage, videoRef, volume, muted, playbackRate, onRateChange）。请重构这个组件，使用 zustand store 来管理共享状态，减少 props 数量。注意组件 props 不超过 10 个的原则，相关的 props 组合成对象传递。",
+      "expected_output": "重构后的 VideoPlayer 组件和对应的 zustand store，props 数量从 15 降到不超过 5 个，播放器状态放在 store 中管理",
+      "files": [],
+      "expectations": [
+        "创建了专门的 zustand store 文件",
+        "VideoPlayer 组件 props 数量不超过 5 个",
+        "组件从 store 读取状态使用单个字段选择器",
+        "播放控制方法在 store 中作为 compound action 实现",
+        "使用了函数式组件声明：export function VideoPlayer()",
+        "相关的 props 组合成对象传递而非扁平展开"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "shadcn Form + Tailwind 表单页",
+      "prompt": "使用 shadcn 组件创建一个用户资料编辑表单页面，包含：用户名输入框、邮箱输入框、性别选择（Select 组件）、头像上传区域、保存按钮。使用 Tailwind CSS utility classes 完成所有样式，不使用自定义 CSS。表单字段使用 zustand store 管理，不通过 props 层层传递。",
+      "expected_output": "包含 zustand store（profile-store.ts）、表单组件（ProfileForm.tsx）、在页面中集成的完整代码",
+      "files": [],
+      "expectations": [
+        "创建了 zustand store 管理表单状态",
+        "使用了 shadcn 的 Input, Select, Button 等组件",
+        "组件 props 数量不超过 10 个",
+        "使用 cn() 函数合并 Tailwind 类名",
+        "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件",
+        "使用了语义化颜色名称",
+        "使用了 lucide-react 图标",
+        "表单字段值通过 store action 更新而非 props 回调"
       ]
     }
   ]

@@ -1,0 +1,62 @@
+{
+  "expectations": [
+    {
+      "evidence": "File `video-player-store.ts` exists in outputs and creates a zustand store via `create` from 'zustand', exported as `useVideoPlayerStore`. The store defines full state interface `VideoPlayerState` with initial values, simple setters, and compound actions.",
+      "passed": true,
+      "text": "创建了专门的 zustand store 文件（如 stores/player-store.ts）"
+    },
+    {
+      "evidence": "`VideoPlayerProps` interface contains exactly 4 props: `videoUrl` (string), `controls` (VideoControls | undefined), `callbacks` (VideoCallbacks | undefined), `videoRef` (React.RefObject<HTMLVideoElement | null>). This is well within the ≤5 limit.",
+      "passed": true,
+      "text": "VideoPlayer 组件 props 数量不超过 5 个"
+    },
+    {
+      "evidence": "All store reads use individual field selectors: `useVideoPlayerStore((s) => s.isPlaying)`, `useVideoPlayerStore((s) => s.currentTime)`, `useVideoPlayerStore((s) => s.capturing)`, `useVideoPlayerStore((s) => s.hasError)`, `useVideoPlayerStore((s) => s.errorMessage)`, `useVideoPlayerStore((s) => s.setIsPlaying)`, etc. No destructuring or multi-field selections are used.",
+      "passed": true,
+      "text": "组件从 store 读取状态使用单个字段选择器模式（如 useStore(s => s.videoUrl)）"
+    },
+    {
+      "evidence": "Store defines compound actions including: `togglePlay` (calls videoEl.play()/pause() with error handling), `handleTimeUpdate` (syncs video element currentTime to store), `captureFrame` (multi-step: captures canvas frame, manages capturing state, returns data URL), and `resetPlayer` (resets entire state to initial values). These contain multi-step logic beyond simple setter mutations.",
+      "passed": true,
+      "text": "播放控制方法在 store 中作为 compound action 实现"
+    },
+    {
+      "evidence": "Component is declared on line 72 as `export function VideoPlayer({...}: VideoPlayerProps)` — a named function declaration, matching the required pattern exactly.",
+      "passed": true,
+      "text": "使用了函数式组件声明：export function VideoPlayer()"
+    },
+    {
+      "evidence": "Related props are grouped into two objects: `controls` (groups `volume`, `muted`, `playbackRate`) and `callbacks` (groups `onPlay`, `onPause`, `onTimeUpdate`, `onRateChange`, `onCaptureFrame`). The component comments explicitly note this reduction from 15 flat props to 4 grouped props.",
+      "passed": true,
+      "text": "相关的 props 组合成对象传递而非扁平展开"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1.0
+  },
+  "claims": [
+    {
+      "claim": "Component was refactored from 15 flat props to 4 grouped props",
+      "verified": true,
+      "evidence": "Code comments in `video-player.tsx` (lines 10-22) explicitly list the 15 original flat props and show the new 4 grouped props. The actual `VideoPlayerProps` interface confirms only 4 props exist."
+    },
+    {
+      "claim": "Granular single-field selectors prevent unnecessary re-renders",
+      "verified": true,
+      "evidence": "All 13 store reads use individual selectors like `useVideoPlayerStore((s) => s.isPlaying)`. In zustand, this pattern ensures a component only re-renders when the specific selected field changes, not when any store field changes."
+    },
+    {
+      "claim": "useCallback optimizations prevent unnecessary handler re-creations",
+      "verified": true,
+      "evidence": "All event handlers (`handlePlayPause`, `handleVideoTimeUpdate`, `handleVideoPlay`, `handleVideoPause`, `handleCaptureKeyframe`) are wrapped in `useCallback` with proper dependency arrays, preventing unnecessary function re-creations on re-renders."
+    },
+    {
+      "claim": "Store is shared across components (not local to VideoPlayer)",
+      "verified": true,
+      "evidence": "Store is exported as a named export `useVideoPlayerStore` from its own module (`video-player-store.ts`), making it available to any component that imports it, as opposed to being scoped within VideoPlayer."
+    }
+  ]
+}

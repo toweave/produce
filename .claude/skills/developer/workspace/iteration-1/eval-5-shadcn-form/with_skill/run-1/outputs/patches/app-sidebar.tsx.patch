@@ -1,0 +1,22 @@
+--- a/src/renderer/src/components/app-sidebar.tsx
++++ b/src/renderer/src/components/app-sidebar.tsx
+@@ -17,7 +17,7 @@ import {
+   SidebarRail,
+ } from "@/components/ui/sidebar"
+-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon, VideoIcon, ImageIcon } from "lucide-react"
++import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, HomeIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, SettingsIcon, FrameIcon, PieChartIcon, MapIcon, VideoIcon, ImageIcon } from "lucide-react"
+
+ // This is sample data.
+ const data = {
+@@ -57,6 +57,16 @@ const data = {
+     },
+     {
++      title: "Profile",
++      url: "/profile",
++      icon: (
++        <SettingsIcon />
++      ),
++    },
++    {
+       title: "实验室",
+       url: "/playground",

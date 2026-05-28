@@ -1,0 +1,39 @@
+{
+  "eval_id": 3,
+  "eval_name": "shadcn-dialog-settings",
+  "prompt": "帮我添加 shadcn 的 Dialog 组件，然后用它实现一个简单的设置弹窗，包含一个主题切换开关和一个版本信息显示。使用 @/ 别名导入。",
+  "assertions": [
+    {
+      "text": "使用了 shadcn CLI 命令添加 Dialog 组件（pnpm dlx shadcn@latest add dialog）",
+      "type": "factual"
+    },
+    {
+      "text": "创建的设置弹窗组件使用 @/ 别名导入 Dialog（如 @/components/ui/dialog）",
+      "type": "factual"
+    },
+    {
+      "text": "使用 cn() 函数合并 Tailwind 类名",
+      "type": "factual"
+    },
+    {
+      "text": "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件",
+      "type": "factual"
+    },
+    {
+      "text": "使用了语义化颜色名称（如 bg-card, text-muted-foreground, border-border）",
+      "type": "factual"
+    },
+    {
+      "text": "使用了 lucide-react 图标",
+      "type": "factual"
+    },
+    {
+      "text": "设置弹窗包含主题切换开关",
+      "type": "factual"
+    },
+    {
+      "text": "设置弹窗显示版本信息",
+      "type": "factual"
+    }
+  ]
+}

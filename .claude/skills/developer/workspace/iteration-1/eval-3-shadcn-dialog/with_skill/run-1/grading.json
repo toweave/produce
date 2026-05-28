@@ -1,0 +1,51 @@
+{
+  "expectations": [
+    {
+      "evidence": "Output file settings-dialog.tsx imports from @/components/ui/dialog, but no log or trace evidence shows that pnpm dlx shadcn@latest add dialog was executed. The CLI command invocation cannot be confirmed from the available outputs.",
+      "passed": false,
+      "text": "使用了 shadcn CLI 命令添加 Dialog 组件（pnpm dlx shadcn@latest add dialog）"
+    },
+    {
+      "evidence": "Lines 4-12 of settings-dialog.tsx import Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, and DialogTrigger from '@/components/ui/dialog'.",
+      "passed": true,
+      "text": "创建的设置弹窗组件使用 @/ 别名导入 Dialog（如 @/components/ui/dialog）"
+    },
+    {
+      "evidence": "No import or usage of cn() anywhere in settings-dialog.tsx. All className attributes use plain string literals (e.g., className=\"sm:max-w-sm\", className=\"flex flex-col gap-4 py-2\").",
+      "passed": false,
+      "text": "使用 cn() 函数合并 Tailwind 类名"
+    },
+    {
+      "evidence": "All styling is done with Tailwind utility classes such as h-4 w-4, sm:max-w-sm, flex flex-col gap-4 py-2, text-xs/relaxed, text-muted-foreground, font-medium. No custom CSS files or references are present.",
+      "passed": true,
+      "text": "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件"
+    },
+    {
+      "evidence": "Uses text-muted-foreground on lines 42, 44, 63, and 67.",
+      "passed": true,
+      "text": "使用了语义化颜色名称（如 bg-card, text-muted-foreground, border-border）"
+    },
+    {
+      "evidence": "Line 1 imports Settings2, Moon, Sun from 'lucide-react'. Settings2 is used on line 27, Moon on line 42, and Sun on line 44.",
+      "passed": true,
+      "text": "使用了 lucide-react 图标"
+    },
+    {
+      "evidence": "Lines 39-56 contain a theme toggle section with a Switch component (line 50), useTheme hook with toggleTheme (line 21), and Moon/Sun icon display based on theme state.",
+      "passed": true,
+      "text": "设置弹窗包含主题切换开关"
+    },
+    {
+      "evidence": "Lines 60-70 display version information: APP_NAME ('Produce') and APP_VERSION ('v1.0.0') rendered as '应用名称' and '应用版本' labels.",
+      "passed": true,
+      "text": "设置弹窗显示版本信息"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 2,
+    "total": 8,
+    "pass_rate": 0.75
+  },
+  "claims": []
+}

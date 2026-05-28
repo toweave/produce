@@ -1,0 +1,401 @@
+{
+  "metadata": {
+    "skill_name": "developer",
+    "skill_path": "<path/to/skill>",
+    "executor_model": "<model-name>",
+    "analyzer_model": "<model-name>",
+    "timestamp": "2026-05-28T06:59:04Z",
+    "evals_run": [
+      3,
+      4,
+      5
+    ],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 3,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.75,
+        "passed": 6,
+        "failed": 2,
+        "total": 8,
+        "time_seconds": 194.7,
+        "tokens": 37124,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "evidence": "Output file settings-dialog.tsx imports from @/components/ui/dialog, but no log or trace evidence shows that pnpm dlx shadcn@latest add dialog was executed. The CLI command invocation cannot be confirmed from the available outputs.",
+          "passed": false,
+          "text": "\u4f7f\u7528\u4e86 shadcn CLI \u547d\u4ee4\u6dfb\u52a0 Dialog \u7ec4\u4ef6\uff08pnpm dlx shadcn@latest add dialog\uff09"
+        },
+        {
+          "evidence": "Lines 4-12 of settings-dialog.tsx import Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, and DialogTrigger from '@/components/ui/dialog'.",
+          "passed": true,
+          "text": "\u521b\u5efa\u7684\u8bbe\u7f6e\u5f39\u7a97\u7ec4\u4ef6\u4f7f\u7528 @/ \u522b\u540d\u5bfc\u5165 Dialog\uff08\u5982 @/components/ui/dialog\uff09"
+        },
+        {
+          "evidence": "No import or usage of cn() anywhere in settings-dialog.tsx. All className attributes use plain string literals (e.g., className=\"sm:max-w-sm\", className=\"flex flex-col gap-4 py-2\").",
+          "passed": false,
+          "text": "\u4f7f\u7528 cn() \u51fd\u6570\u5408\u5e76 Tailwind \u7c7b\u540d"
+        },
+        {
+          "evidence": "All styling is done with Tailwind utility classes such as h-4 w-4, sm:max-w-sm, flex flex-col gap-4 py-2, text-xs/relaxed, text-muted-foreground, font-medium. No custom CSS files or references are present.",
+          "passed": true,
+          "text": "\u6240\u6709\u6837\u5f0f\u4f7f\u7528 Tailwind utility classes\uff0c\u6ca1\u6709\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6"
+        },
+        {
+          "evidence": "Uses text-muted-foreground on lines 42, 44, 63, and 67.",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0\uff08\u5982 bg-card, text-muted-foreground, border-border\uff09"
+        },
+        {
+          "evidence": "Line 1 imports Settings2, Moon, Sun from 'lucide-react'. Settings2 is used on line 27, Moon on line 42, and Sun on line 44.",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86 lucide-react \u56fe\u6807"
+        },
+        {
+          "evidence": "Lines 39-56 contain a theme toggle section with a Switch component (line 50), useTheme hook with toggleTheme (line 21), and Moon/Sun icon display based on theme state.",
+          "passed": true,
+          "text": "\u8bbe\u7f6e\u5f39\u7a97\u5305\u542b\u4e3b\u9898\u5207\u6362\u5f00\u5173"
+        },
+        {
+          "evidence": "Lines 60-70 display version information: APP_NAME ('Produce') and APP_VERSION ('v1.0.0') rendered as '\u5e94\u7528\u540d\u79f0' and '\u5e94\u7528\u7248\u672c' labels.",
+          "passed": true,
+          "text": "\u8bbe\u7f6e\u5f39\u7a97\u663e\u793a\u7248\u672c\u4fe1\u606f"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 4,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 93.3,
+        "tokens": 28752,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "evidence": "File `video-player-store.ts` exists in outputs and creates a zustand store via `create` from 'zustand', exported as `useVideoPlayerStore`. The store defines full state interface `VideoPlayerState` with initial values, simple setters, and compound actions.",
+          "passed": true,
+          "text": "\u521b\u5efa\u4e86\u4e13\u95e8\u7684 zustand store \u6587\u4ef6\uff08\u5982 stores/player-store.ts\uff09"
+        },
+        {
+          "evidence": "`VideoPlayerProps` interface contains exactly 4 props: `videoUrl` (string), `controls` (VideoControls | undefined), `callbacks` (VideoCallbacks | undefined), `videoRef` (React.RefObject<HTMLVideoElement | null>). This is well within the \u22645 limit.",
+          "passed": true,
+          "text": "VideoPlayer \u7ec4\u4ef6 props \u6570\u91cf\u4e0d\u8d85\u8fc7 5 \u4e2a"
+        },
+        {
+          "evidence": "All store reads use individual field selectors: `useVideoPlayerStore((s) => s.isPlaying)`, `useVideoPlayerStore((s) => s.currentTime)`, `useVideoPlayerStore((s) => s.capturing)`, `useVideoPlayerStore((s) => s.hasError)`, `useVideoPlayerStore((s) => s.errorMessage)`, `useVideoPlayerStore((s) => s.setIsPlaying)`, etc. No destructuring or multi-field selections are used.",
+          "passed": true,
+          "text": "\u7ec4\u4ef6\u4ece store \u8bfb\u53d6\u72b6\u6001\u4f7f\u7528\u5355\u4e2a\u5b57\u6bb5\u9009\u62e9\u5668\u6a21\u5f0f\uff08\u5982 useStore(s => s.videoUrl)\uff09"
+        },
+        {
+          "evidence": "Store defines compound actions including: `togglePlay` (calls videoEl.play()/pause() with error handling), `handleTimeUpdate` (syncs video element currentTime to store), `captureFrame` (multi-step: captures canvas frame, manages capturing state, returns data URL), and `resetPlayer` (resets entire state to initial values). These contain multi-step logic beyond simple setter mutations.",
+          "passed": true,
+          "text": "\u64ad\u653e\u63a7\u5236\u65b9\u6cd5\u5728 store \u4e2d\u4f5c\u4e3a compound action \u5b9e\u73b0"
+        },
+        {
+          "evidence": "Component is declared on line 72 as `export function VideoPlayer({...}: VideoPlayerProps)` \u2014 a named function declaration, matching the required pattern exactly.",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86\u51fd\u6570\u5f0f\u7ec4\u4ef6\u58f0\u660e\uff1aexport function VideoPlayer()"
+        },
+        {
+          "evidence": "Related props are grouped into two objects: `controls` (groups `volume`, `muted`, `playbackRate`) and `callbacks` (groups `onPlay`, `onPause`, `onTimeUpdate`, `onRateChange`, `onCaptureFrame`). The component comments explicitly note this reduction from 15 flat props to 4 grouped props.",
+          "passed": true,
+          "text": "\u76f8\u5173\u7684 props \u7ec4\u5408\u6210\u5bf9\u8c61\u4f20\u9012\u800c\u975e\u6241\u5e73\u5c55\u5f00"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 5,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 1,
+        "total": 8,
+        "time_seconds": 74.3,
+        "tokens": 39174,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "evidence": "stores/profile-store.ts \u5df2\u521b\u5efa\uff0c\u4f7f\u7528 zustand \u7684 create() \u7ba1\u7406\u8868\u5355\u72b6\u6001\u5b57\u6bb5\uff08username, email, gender, avatarData, saving\uff09\u53ca actions\uff08setUsername, setEmail, setGender, setAvatarData, setSaving, saveProfile, resetForm\uff09\u3002",
+          "passed": true,
+          "text": "\u521b\u5efa\u4e86 zustand store \u7ba1\u7406\u8868\u5355\u72b6\u6001\uff08\u5982 stores/profile-store.ts\uff09"
+        },
+        {
+          "evidence": "pages/profile.tsx \u5bfc\u5165\u4e86 @/components/ui/button \u7684 Button\u3001@/components/ui/input \u7684 Input\u3001@/components/ui/select \u7684 Select/SelectContent/SelectItem/SelectTrigger/SelectValue \u7b49 shadcn \u7ec4\u4ef6\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86 shadcn \u7684 Input, Select, Button \u7b49\u7ec4\u4ef6"
+        },
+        {
+          "evidence": "ProfilePage \u7ec4\u4ef6\u7b7e\u540d\u662f `export default function ProfilePage(): React.JSX.Element`\uff0c\u4e0d\u63a5\u6536\u4efb\u4f55 props\u3002\u6240\u6709\u6570\u636e\u901a\u8fc7 zustand store \u9009\u62e9\u5668\u8bfb\u53d6\u3002",
+          "passed": true,
+          "text": "\u7ec4\u4ef6 props \u6570\u91cf\u4e0d\u8d85\u8fc7 10 \u4e2a"
+        },
+        {
+          "evidence": "pages/profile.tsx \u4e2d\u672a\u4f7f\u7528 cn() \u51fd\u6570\u3002\u6240\u6709 className \u5c5e\u6027\u5747\u4e3a\u7b80\u5355\u5b57\u7b26\u4e32\uff0c\u672a\u5c55\u793a\u7c7b\u540d\u5408\u5e76\u7528\u6cd5\u3002\u5e95\u5c42 shadcn \u7ec4\u4ef6\u5185\u90e8\u4f7f\u7528\u4e86 cn()\uff0c\u4f46\u5b66\u751f\u4ee3\u7801\u672a\u76f4\u63a5\u4f7f\u7528\u3002",
+          "passed": false,
+          "text": "\u4f7f\u7528 cn() \u51fd\u6570\u5408\u5e76 Tailwind \u7c7b\u540d"
+        },
+        {
+          "evidence": "\u6240\u6709\u6837\u5f0f\u5747\u901a\u8fc7 Tailwind utility \u7c7b\u5b9e\u73b0\uff08\u5982 p-6, w-full, max-w-2xl, mx-auto, flex, gap-2, size-4, text-xs/relaxed \u7b49\uff09\u3002\u672a\u521b\u5efa\u4efb\u4f55\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6\u3002",
+          "passed": true,
+          "text": "\u6240\u6709\u6837\u5f0f\u4f7f\u7528 Tailwind utility classes\uff0c\u6ca1\u6709\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6"
+        },
+        {
+          "evidence": "\u4ee3\u7801\u4e2d\u4f7f\u7528\u4e86 text-muted-foreground\uff08\u7b2c71,85\u884c\uff09\u3001border-border\uff08\u7b2c161\u884c\uff09\u3001bg-primary\u3001text-primary-foreground\u3001bg-background\u3001ring-background\uff08\u7b2c77\u884c\uff09\u7b49\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0\uff08\u5982 bg-card, text-muted-foreground, border-border\uff09"
+        },
+        {
+          "evidence": "\u4ece lucide-react \u5bfc\u5165\u4e86 UserIcon, UploadIcon, CameraIcon\uff08\u7b2c3\u884c\uff09\uff0c\u5e76\u5728 JSX \u4e2d\u4f7f\u7528\u3002sidebar \u8865\u4e01\u8fd8\u6dfb\u52a0\u4e86 SettingsIcon \u5bfc\u5165\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86 lucide-react \u56fe\u6807"
+        },
+        {
+          "evidence": "ProfilePage \u7ec4\u4ef6\u65e0 props\uff0c\u6240\u6709\u5b57\u6bb5\u503c\u901a\u8fc7 useProfileStore \u9009\u62e9\u5668\u8bfb\u53d6\uff0c\u66f4\u65b0\u901a\u8fc7 store actions \u5b8c\u6210\uff1asetUsername(e.target.value)\u3001setEmail(e.target.value)\u3001setGender(val)\u3002",
+          "passed": true,
+          "text": "\u8868\u5355\u5b57\u6bb5\u503c\u901a\u8fc7 store action \u66f4\u65b0\u800c\u975e props \u56de\u8c03"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 3,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 1,
+        "total": 8,
+        "time_seconds": 97.8,
+        "tokens": 33254,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "name": "\u4f7f\u7528\u4e86 shadcn CLI \u547d\u4ee4\u6dfb\u52a0 Dialog \u7ec4\u4ef6",
+          "evidence": "outputs/src/renderer/src/components/ui/dialog.tsx \u6587\u4ef6\u4e2d\u7684 Dialog \u7ec4\u4ef6\u662f\u624b\u52a8\u7f16\u5199\u7684\uff0c\u800c\u975e shadcn CLI \u751f\u6210\u3002\u8bc1\u636e\uff1a(1) \u7ec4\u4ef6\u4ece 'radix-ui' \u5bfc\u5165\uff08import { Dialog as DialogPrimitive } from \"radix-ui\"\uff09\uff0c\u800c shadcn CLI \u4f1a\u751f\u6210\u4ece '@radix-ui/react-dialog' \u7684\u5bfc\u5165\uff1b(2) \u7f3a\u5c11 shadcn CLI \u81ea\u52a8\u751f\u6210\u7684\u5934\u90e8\u6ce8\u91ca\uff1b(3) \u7ec4\u4ef6\u7ed3\u6784\u6a21\u5f0f\uff08\u4f7f\u7528 data-slot \u5c5e\u6027\uff09\u4e0e\u6807\u51c6 shadcn CLI \u751f\u6210\u7684 Dialog \u7ec4\u4ef6\u4e0d\u4e00\u81f4\uff1b(4) \u6ca1\u6709\u4efb\u4f55\u7ec8\u7aef\u547d\u4ee4\u6216\u65e5\u5fd7\u6587\u4ef6\u8868\u660e pnpm dlx shadcn@latest add dialog \u88ab\u6267\u884c\u8fc7\u3002",
+          "passed": false,
+          "text": "\u4f7f\u7528\u4e86 shadcn CLI \u547d\u4ee4\u6dfb\u52a0 Dialog \u7ec4\u4ef6\uff08pnpm dlx shadcn@latest add dialog\uff09"
+        },
+        {
+          "name": "\u8bbe\u7f6e\u5f39\u7a97\u7ec4\u4ef6\u4f7f\u7528 @/ \u522b\u540d\u5bfc\u5165 Dialog",
+          "evidence": "settings-dialog.tsx \u7b2c 6-14 \u884c\u4f7f\u7528 '@/' \u522b\u540d\u5bfc\u5165 Dialog \u7ec4\u4ef6\uff1aimport { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription } from \"@/components/ui/dialog\"",
+          "passed": true,
+          "text": "\u521b\u5efa\u7684\u8bbe\u7f6e\u5f39\u7a97\u7ec4\u4ef6\u4f7f\u7528 @/ \u522b\u540d\u5bfc\u5165 Dialog\uff08\u5982 @/components/ui/dialog\uff09"
+        },
+        {
+          "name": "\u4f7f\u7528 cn() \u51fd\u6570\u5408\u5e76 Tailwind \u7c7b\u540d",
+          "evidence": "dialog.tsx \u7b2c 5 \u884c\u4ece '@/lib/utils' \u5bfc\u5165 cn()\uff0c\u5e76\u5728 DialogOverlay\uff08\u7b2c 37 \u884c\uff09\u3001DialogContent\uff08\u7b2c 59 \u884c\uff09\u3001DialogHeader\uff08\u7b2c 87 \u884c\uff09\u3001DialogFooter\uff08\u7b2c 97 \u884c\uff09\u3001DialogTitle\uff08\u7b2c 110 \u884c\uff09\u3001DialogDescription\uff08\u7b2c 123 \u884c\uff09\u4e2d\u4f5c\u4e3a className \u5408\u5e76\u51fd\u6570\u4f7f\u7528\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528 cn() \u51fd\u6570\u5408\u5e76 Tailwind \u7c7b\u540d"
+        },
+        {
+          "name": "\u6240\u6709\u6837\u5f0f\u4f7f\u7528 Tailwind utility classes",
+          "evidence": "\u4e24\u4e2a\u6587\u4ef6\u4e2d\u6240\u6709\u6837\u5f0f\u5747\u4f7f\u7528 Tailwind utility class\uff08\u5982 fixed, inset-0, z-50, flex, gap-4, p-6, text-xs/relaxed \u7b49\uff09\uff0c\u6ca1\u6709\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6\u5b58\u5728\u3002",
+          "passed": true,
+          "text": "\u6240\u6709\u6837\u5f0f\u4f7f\u7528 Tailwind utility classes\uff0c\u6ca1\u6709\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6"
+        },
+        {
+          "name": "\u4f7f\u7528\u4e86\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0",
+          "evidence": "\u591a\u5904\u4f7f\u7528\u4e86\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0\uff1asettings-dialog.tsx \u7b2c 41/43/61 \u884c\u4f7f\u7528 text-muted-foreground\uff08\u5e94\u7528\u4e8e MoonIcon\u3001SunIcon\u3001\u7248\u672c\u6807\u7b7e\uff09\uff1bdialog.tsx \u7b2c 60 \u884c\u4f7f\u7528 bg-background\uff1b\u7b2c 110 \u884c\u4f7f\u7528 text-foreground\uff1b\u7b2c 123 \u884c\u4f7f\u7528 text-muted-foreground\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0\uff08\u5982 bg-card, text-muted-foreground, border-border\uff09"
+        },
+        {
+          "name": "\u4f7f\u7528\u4e86 lucide-react \u56fe\u6807",
+          "evidence": "settings-dialog.tsx \u7b2c 15 \u884c\u4ece lucide-react \u5bfc\u5165 SettingsIcon\u3001MoonIcon\u3001SunIcon \u4e09\u4e2a\u56fe\u6807\uff0c\u5e76\u5728\u7ec4\u4ef6\u4e2d\u4f7f\u7528\u3002dialog.tsx \u7b2c 3 \u884c\u4ece lucide-react \u5bfc\u5165 XIcon\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86 lucide-react \u56fe\u6807"
+        },
+        {
+          "name": "\u8bbe\u7f6e\u5f39\u7a97\u5305\u542b\u4e3b\u9898\u5207\u6362\u5f00\u5173",
+          "evidence": "settings-dialog.tsx \u7b2c 37-55 \u884c\u5b9e\u73b0\u4e86\u4e3b\u9898\u5207\u6362\u529f\u80fd\uff1a\u4f7f\u7528 useTheme() hook \u83b7\u53d6 theme \u548c toggleTheme\uff0c\u901a\u8fc7 Switch \u7ec4\u4ef6\u7ed1\u5b9a dark/light \u6a21\u5f0f\u5207\u6362\uff0cMoonIcon/SunIcon \u72b6\u6001\u56fe\u6807\u6839\u636e\u5f53\u524d\u4e3b\u9898\u52a8\u6001\u6e32\u67d3\u3002",
+          "passed": true,
+          "text": "\u8bbe\u7f6e\u5f39\u7a97\u5305\u542b\u4e3b\u9898\u5207\u6362\u5f00\u5173"
+        },
+        {
+          "name": "\u8bbe\u7f6e\u5f39\u7a97\u663e\u793a\u7248\u672c\u4fe1\u606f",
+          "evidence": "settings-dialog.tsx \u7b2c 17 \u884c\u5b9a\u4e49 APP_VERSION = \"1.0.0\"\uff0c\u7b2c 59-63 \u884c\u5728\u9875\u9762\u4e2d\u663e\u793a '\u5e94\u7528\u7248\u672c' \u6807\u7b7e\u548c\u5bf9\u5e94\u7684\u7248\u672c\u53f7\u3002",
+          "passed": true,
+          "text": "\u8bbe\u7f6e\u5f39\u7a97\u663e\u793a\u7248\u672c\u4fe1\u606f"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 4,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1,
+        "passed": 6,
+        "failed": 0,
+        "total": 6,
+        "time_seconds": 106.0,
+        "tokens": 27397,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "evidence": "Found dedicated store file at video-player-store.ts. It uses `create` from 'zustand', defines `VideoPlayerState` interface with all playback/UI state and actions, and exports `useVideoPlayerStore`.",
+          "passed": true,
+          "text": "\u521b\u5efa\u4e86\u4e13\u95e8\u7684 zustand store \u6587\u4ef6\uff08\u5982 stores/player-store.ts\uff09"
+        },
+        {
+          "evidence": "VideoPlayerProps defines exactly 3 props: `videoUrl` (string), `videoRef` (RefObject), and `callbacks` (VideoPlayerCallbacks, optional). The component accepts only these 3 props, which is well under the 5-prop limit.",
+          "passed": true,
+          "text": "VideoPlayer \u7ec4\u4ef6 props \u6570\u91cf\u4e0d\u8d85\u8fc7 5 \u4e2a"
+        },
+        {
+          "evidence": "Every state subscription in VideoPlayer uses single-field selector pattern, e.g.: `useVideoPlayerStore((s) => s.isPlaying)`, `useVideoPlayerStore((s) => s.currentTime)`, `useVideoPlayerStore((s) => s.volume)`, `useVideoPlayerStore((s) => s.muted)`, `useVideoPlayerStore((s) => s.playbackRate)`, `useVideoPlayerStore((s) => s.capturing)`, `useVideoPlayerStore((s) => s.play)`, `useVideoPlayerStore((s) => s.pause)`, `useVideoPlayerStore((s) => s.togglePlay)`, etc. The `selectError` helper selector is also used for the related error fields.",
+          "passed": true,
+          "text": "\u7ec4\u4ef6\u4ece store \u8bfb\u53d6\u72b6\u6001\u4f7f\u7528\u5355\u4e2a\u5b57\u6bb5\u9009\u62e9\u5668\u6a21\u5f0f\uff08\u5982 useStore(s => s.videoUrl)\uff09"
+        },
+        {
+          "evidence": "Actions in the store combine state mutation with side effects: `play()` sets `isPlaying: true` and invokes `_callbacks.onPlay?.()`; `pause()` sets `isPlaying: false` and invokes `_callbacks.onPause?.()`; `togglePlay()` reads current state and delegates to play/pause; `setCurrentTime(time)` sets time and invokes `_callbacks.onTimeUpdate?.(time)`; `setPlaybackRate(rate)` sets rate and invokes `_callbacks.onRateChange?.(rate)`.",
+          "passed": true,
+          "text": "\u64ad\u653e\u63a7\u5236\u65b9\u6cd5\u5728 store \u4e2d\u4f5c\u4e3a compound action \u5b9e\u73b0"
+        },
+        {
+          "evidence": "Line 74 of video-player.tsx: `export function VideoPlayer({ videoUrl, videoRef, callbacks }: VideoPlayerProps)` uses function declaration syntax (not arrow function or class component).",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86\u51fd\u6570\u5f0f\u7ec4\u4ef6\u58f0\u660e\uff1aexport function VideoPlayer()"
+        },
+        {
+          "evidence": "All notification callbacks (onPlay, onPause, onTimeUpdate, onRateChange, onCaptureFrame) are combined into a single `callbacks` prop of type `VideoPlayerCallbacks`. In usage-example.tsx, the parent passes `callbacks={{ onCaptureFrame: ... }}` as an object rather than spreading individual callback props.",
+          "passed": true,
+          "text": "\u76f8\u5173\u7684 props \u7ec4\u5408\u6210\u5bf9\u8c61\u4f20\u9012\u800c\u975e\u6241\u5e73\u5c55\u5f00"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "eval_id": 5,
+      "configuration": "without_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 0.875,
+        "passed": 7,
+        "failed": 1,
+        "total": 8,
+        "time_seconds": 65.7,
+        "tokens": 28043,
+        "tool_calls": 0,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "evidence": "\u6587\u4ef6 profile-store.ts \u5b58\u5728\uff0c\u4f7f\u7528 create \u4ece zustand \u521b\u5efa store\uff0c\u7ba1\u7406 username\u3001email\u3001gender\u3001avatarDataUrl \u7b49\u8868\u5355\u72b6\u6001\uff0c\u5e76\u63d0\u4f9b setUsername\u3001setEmail\u3001setGender\u3001setAvatar\u3001validate\u3001save\u3001reset \u7b49 action\u3002",
+          "passed": true,
+          "text": "\u521b\u5efa\u4e86 zustand store \u7ba1\u7406\u8868\u5355\u72b6\u6001\uff08\u5982 stores/profile-store.ts\uff09"
+        },
+        {
+          "evidence": "profile-edit.tsx \u4ece @/components/ui/input \u5bfc\u5165 Input\uff0c\u4ece @/components/ui/select \u5bfc\u5165 Select/SelectContent/SelectItem/SelectTrigger/SelectValue\uff0c\u4ece @/components/ui/button \u5bfc\u5165 Button\uff0c\u540c\u65f6\u4f7f\u7528\u4e86 Card\u3001Label\u3001Avatar\u3001Separator \u7b49 shadcn \u7ec4\u4ef6\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86 shadcn \u7684 Input, Select, Button \u7b49\u7ec4\u4ef6"
+        },
+        {
+          "evidence": "ProfileEditPage \u7ec4\u4ef6\u5b9a\u4e49\u4e2d\u4e0d\u63a5\u6536\u4efb\u4f55 props\uff08export default function ProfileEditPage(): React.JSX.Element\uff09\uff0c\u6240\u6709\u8868\u5355\u6570\u636e\u901a\u8fc7 useProfileStore() \u76f4\u63a5\u4ece store \u8bfb\u53d6\uff0cprops \u6570\u91cf\u4e3a 0\uff0c\u8fdc\u4f4e\u4e8e 10 \u7684\u9650\u5236\u3002",
+          "passed": true,
+          "text": "\u7ec4\u4ef6 props \u6570\u91cf\u4e0d\u8d85\u8fc7 10 \u4e2a"
+        },
+        {
+          "evidence": "profile-edit.tsx \u4e2d\u5b8c\u5168\u6ca1\u6709\u5bfc\u5165\u6216\u4f7f\u7528 cn() \u51fd\u6570\u3002\u6240\u6709 className \u5747\u4e3a\u76f4\u63a5\u62fc\u63a5\u7684\u5b57\u7b26\u4e32\u5e38\u91cf\uff08\u5982 'mx-auto max-w-2xl p-6'\u3001'flex flex-col items-center gap-4'\uff09\uff0c\u672a\u901a\u8fc7 cn() \u8fdb\u884c\u5408\u5e76\u3002",
+          "passed": false,
+          "text": "\u4f7f\u7528 cn() \u51fd\u6570\u5408\u5e76 Tailwind \u7c7b\u540d"
+        },
+        {
+          "evidence": "\u6240\u6709\u6837\u5f0f\u5747\u901a\u8fc7 className \u5c5e\u6027\u4f7f\u7528 Tailwind utility classes\uff08\u5982 max-w-2xl\u3001space-y-6\u3001size-24\u3001text-xs \u7b49\uff09\uff0c\u4e0d\u5b58\u5728\u4efb\u4f55\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6\u6216\u5185\u8054 style \u5bf9\u8c61\u3002",
+          "passed": true,
+          "text": "\u6240\u6709\u6837\u5f0f\u4f7f\u7528 Tailwind utility classes\uff0c\u6ca1\u6709\u81ea\u5b9a\u4e49 CSS \u6587\u4ef6"
+        },
+        {
+          "evidence": "\u4f7f\u7528\u4e86\u591a\u4e2a\u8bed\u4e49\u5316 Tailwind \u989c\u8272\u7c7b\uff1atext-muted-foreground\uff08\u5934\u50cf\u63d0\u793a\u6587\u5b57\uff09\u3001text-destructive\uff08\u6821\u9a8c\u9519\u8bef\u63d0\u793a\uff09\u3001bg-primary/text-primary-foreground\uff08\u76f8\u673a\u6309\u94ae\uff09\u3001ring-background\u3001hover:text-foreground\u3001hover:bg-primary/80\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86\u8bed\u4e49\u5316\u989c\u8272\u540d\u79f0\uff08\u5982 bg-card, text-muted-foreground, border-border\uff09"
+        },
+        {
+          "evidence": "profile-edit.tsx \u7b2c 11 \u884c\u4ece lucide-react \u5bfc\u5165 UserIcon\u3001CameraIcon\u3001Loader2Icon\uff0c\u5e76\u5206\u522b\u7528\u4e8e Avatar \u5360\u4f4d\u56fe\u6807\u3001\u76f8\u673a\u6309\u94ae\u548c\u4fdd\u5b58\u52a0\u8f7d\u72b6\u6001\u3002",
+          "passed": true,
+          "text": "\u4f7f\u7528\u4e86 lucide-react \u56fe\u6807"
+        },
+        {
+          "evidence": "\u7ec4\u4ef6\u901a\u8fc7 useProfileStore() \u8bfb\u53d6\u5b57\u6bb5\u503c\uff0c\u66f4\u65b0\u65f6\u76f4\u63a5\u8c03\u7528 store action\uff1asetUsername(e.target.value)\u3001setEmail(e.target.value)\u3001setGender(val)\u3001setAvatar(file)\u3001clearAvatar()\uff0c\u672a\u4f7f\u7528\u4efb\u4f55 props \u56de\u8c03\u3002",
+          "passed": true,
+          "text": "\u8868\u5355\u5b57\u6bb5\u503c\u901a\u8fc7 store action \u66f4\u65b0\u800c\u975e props \u56de\u8c03"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.875,
+        "stddev": 0.125,
+        "min": 0.75,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 120.7667,
+        "stddev": 64.7291,
+        "min": 74.3,
+        "max": 194.7
+      },
+      "tokens": {
+        "mean": 35016.6667,
+        "stddev": 5521.3369,
+        "min": 28752,
+        "max": 39174
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.9167,
+        "stddev": 0.0722,
+        "min": 0.875,
+        "max": 1
+      },
+      "time_seconds": {
+        "mean": 89.8333,
+        "stddev": 21.2984,
+        "min": 65.7,
+        "max": 106.0
+      },
+      "tokens": {
+        "mean": 29564.6667,
+        "stddev": 3211.3415,
+        "min": 27397,
+        "max": 33254
+      }
+    },
+    "delta": {
+      "pass_rate": "-0.04",
+      "time_seconds": "+30.9",
+      "tokens": "+5452"
+    }
+  },
+  "notes": []
+}

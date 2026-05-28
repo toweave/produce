@@ -3,7 +3,6 @@ import type { Ratio, Resolution } from '@/pages/seedance/types'
 
 const STORAGE_DIRS_KEY = 'seedance-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance-storage-current'
-
 const STORAGE_LAST_SESSION_KEY = 'seedance-last-session'
 
 function captureFrameToDataUrl(video: HTMLVideoElement, canvas: HTMLCanvasElement): string {
@@ -59,34 +58,8 @@ interface SeedanceCreateState {
   storageDirs: string[]
   currentDir: string
 
-  // Simple setters
-  setPrompt: (val: string) => void
-  setImageData: (val: string | null) => void
-  setFirstFramePath: (val: string) => void
-  setUseLastFrame: (val: boolean) => void
-  setLastFrameData: (val: string | null) => void
-  setLastFramePath: (val: string) => void
-  setRatio: (val: Ratio) => void
-  setDuration: (val: number) => void
-  setResolution: (val: Resolution) => void
-  setGenerateAudio: (val: boolean) => void
-  setWatermark: (val: boolean) => void
-  setError: (val: string) => void
-  setApiKeyMissing: (val: boolean) => void
-  setSubmitting: (val: boolean) => void
-  setCreatedId: (val: string) => void
-  setTaskStatus: (val: string) => void
-  setVideoUrl: (val: string) => void
-  setPollError: (val: string) => void
-  setIsPlaying: (val: boolean) => void
-  setHasInteracted: (val: boolean) => void
-  setCurrentTime: (val: number) => void
-  setCaptureFlash: (val: boolean) => void
-  setCapturingAuto: (val: boolean) => void
-  setAutoKeyframes: (val: string[]) => void
-  setManualKeyframes: (val: string[]) => void
-  setStorageDirs: (val: string[]) => void
-  setCurrentDir: (val: string) => void
+  // Generic updater (replaces individual simple setters)
+  update: (partial: Partial<SeedanceCreateState>) => void
 
   // Compound actions
   clearImage: () => void
@@ -130,34 +103,8 @@ export const useSeedanceCreateStore = create<SeedanceCreateState>()((set, get) =
   storageDirs: [],
   currentDir: '',
 
-  // Simple setters
-  setPrompt: (val) => set({ prompt: val }),
-  setImageData: (val) => set({ imageData: val }),
-  setFirstFramePath: (val) => set({ firstFramePath: val }),
-  setUseLastFrame: (val) => set({ useLastFrame: val }),
-  setLastFrameData: (val) => set({ lastFrameData: val }),
-  setLastFramePath: (val) => set({ lastFramePath: val }),
-  setRatio: (val) => set({ ratio: val }),
-  setDuration: (val) => set({ duration: val }),
-  setResolution: (val) => set({ resolution: val }),
-  setGenerateAudio: (val) => set({ generateAudio: val }),
-  setWatermark: (val) => set({ watermark: val }),
-  setError: (val) => set({ error: val }),
-  setApiKeyMissing: (val) => set({ apiKeyMissing: val }),
-  setSubmitting: (val) => set({ submitting: val }),
-  setCreatedId: (val) => set({ createdId: val }),
-  setTaskStatus: (val) => set({ taskStatus: val }),
-  setVideoUrl: (val) => set({ videoUrl: val }),
-  setPollError: (val) => set({ pollError: val }),
-  setIsPlaying: (val) => set({ isPlaying: val }),
-  setHasInteracted: (val) => set({ hasInteracted: val }),
-  setCurrentTime: (val) => set({ currentTime: val }),
-  setCaptureFlash: (val) => set({ captureFlash: val }),
-  setCapturingAuto: (val) => set({ capturingAuto: val }),
-  setAutoKeyframes: (val) => set({ autoKeyframes: val }),
-  setManualKeyframes: (val) => set({ manualKeyframes: val }),
-  setStorageDirs: (val) => set({ storageDirs: val }),
-  setCurrentDir: (val) => set({ currentDir: val }),
+  // Generic updater — single point for all simple field mutations
+  update: (partial) => set(partial),
 
   // Compound actions
   clearImage: () => set({ imageData: null, firstFramePath: '' }),
@@ -199,26 +146,16 @@ export const useSeedanceCreateStore = create<SeedanceCreateState>()((set, get) =
 
   resetPanel: () =>
     set({
-      createdId: '',
-      taskStatus: '',
-      videoUrl: '',
-      pollError: '',
-      isPlaying: false,
-      hasInteracted: false,
-      currentTime: 0,
-      captureFlash: false,
-      capturingAuto: false,
-      autoKeyframes: [],
-      manualKeyframes: []
+      createdId: '', taskStatus: '', videoUrl: '', pollError: '',
+      isPlaying: false, hasInteracted: false, currentTime: 0, captureFlash: false,
+      capturingAuto: false, autoKeyframes: [], manualKeyframes: []
     }),
 
   addManualKeyframe: (dataUrl) =>
     set((s) => ({ manualKeyframes: [...s.manualKeyframes, dataUrl] })),
 
   removeManualKeyframe: (index) =>
-    set((s) => ({
-      manualKeyframes: s.manualKeyframes.filter((_, i) => i !== index)
-    })),
+    set((s) => ({ manualKeyframes: s.manualKeyframes.filter((_, i) => i !== index) })),
 
   clearKeyframes: () => set({ autoKeyframes: [], manualKeyframes: [] }),
 
@@ -243,8 +180,6 @@ export const useSeedanceCreateStore = create<SeedanceCreateState>()((set, get) =
         session.manualCount = index + 1
         localStorage.setItem(STORAGE_LAST_SESSION_KEY, JSON.stringify(session))
       }
-    } catch {
-      console.error('关键帧保存失败')
-    }
+    } catch { /* fail silently */ }
   }
 }))
