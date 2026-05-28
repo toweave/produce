@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import { CreateForm } from './components/create-form'
@@ -261,8 +260,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     localStorage.setItem(STORAGE_CURRENT_KEY, dir)
   }, [])
 
-  const handleStorageChange = async (e: React.ChangeEvent<HTMLSelectElement>): Promise<void> => {
-    const val = e.target.value
+  const handleStorageChange = async (val: string): Promise<void> => {
     if (val === '__add__') {
       const dir = await window.api.dialog.selectDirectory()
       if (dir) {

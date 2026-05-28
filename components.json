@@ -17,6 +17,7 @@
     "utils": "src/renderer/src/lib/utils",
     "ui": "src/renderer/src/components/ui",
     "lib": "src/renderer/src/lib",
+    "pages": "src/renderer/src/pages",
     "hooks": "src/renderer/src/hooks"
   },
   "menuColor": "default",
