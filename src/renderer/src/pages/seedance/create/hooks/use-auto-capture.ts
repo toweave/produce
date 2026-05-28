@@ -43,12 +43,12 @@ export function useAutoCapture({ videoRef, justCreated }: UseAutoCaptureOptions)
     justCreated.current = false
     const video = videoRef.current
 
-    const doCapture = async () => {
+    const doCapture = async ():Promise<void> => {
       useSeedanceCreateStore.getState().update({ capturingAuto: true })
 
       if (!video.duration || video.duration === 0) {
         await new Promise<void>((resolve) => {
-          const handler = () => {
+          const handler = ():void => {
             video.removeEventListener('loadedmetadata', handler)
             resolve()
           }
