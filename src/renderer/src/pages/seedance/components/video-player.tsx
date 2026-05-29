@@ -141,6 +141,7 @@ export function VideoPlayer({ videoRef }: VideoPlayerProps): React.JSX.Element {
             onPlay={handlePlay}
             controls={false}
           />
+          <canvas ref={canvasRef} className="hidden" />
 
           {!isPlaying && (
             <button

@@ -1,5 +1,5 @@
 import React from 'react'
-import { VideoIcon, UploadIcon, XIcon, Loader2Icon, SettingsIcon } from 'lucide-react'
+import { VideoIcon, UploadIcon, X, Loader2Icon, SettingsIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSeedanceCreateStore } from '@/stores/seedance-create-store'
 
@@ -62,7 +62,7 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
     ratio, duration, resolution, generateAudio, watermark,
     error, apiKeyMissing, submitting, createdId,
     storageDirs, currentDir,
-    update, clearImage, selectImage, selectLastFrame, handleStorageChange
+    update, clearImage, clearLastFrame, selectImage, selectLastFrame, handleStorageChange
   } = useSeedanceCreateStore()
 
   return (
@@ -85,11 +85,9 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
               value={prompt}
               onChange={(e) => update({ prompt: e.target.value })}
               placeholder="描述你想要生成的视频内容，例如：写实风格，晴朗的蓝天之下，一大片白色的雏菊花田，镜头逐渐拉近..."
-              rows={4}
+              rows={6}
             />
-            <FieldDescription>
-              中文不超过 500 字，英文不超过 1000 词
-            </FieldDescription>
+            <FieldDescription>中文不超过 500 字，英文不超过 1000 词</FieldDescription>
           </FieldContent>
         </Field>
       </FieldGroup>
@@ -116,12 +114,16 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
                 {imageData ? (
                   <>
                     <img src={imageData} alt="首帧" className="size-full object-cover rounded-lg" />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); clearImage() }}
-                      className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-0.5"
+                    <Button
+                      size="icon"
+                      className="rounded-full absolute -top-2 -right-2 size-6 cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        clearImage()
+                      }}
                     >
-                      <XIcon className="size-3" />
-                    </button>
+                      <X className="size-3" />
+                    </Button>
                   </>
                 ) : (
                   <>
@@ -136,7 +138,23 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
                   className="relative flex flex-col items-center justify-center size-32 rounded-lg border-2 border-dashed border-input bg-background cursor-pointer hover:border-primary/50 transition-colors"
                 >
                   {lastFrameData ? (
-                    <img className="size-full object-cover rounded-lg" src={lastFrameData} alt="尾帧" />
+                    <>
+                      <img
+                        className="size-full object-cover rounded-lg"
+                        src={lastFrameData}
+                        alt="尾帧"
+                      />
+                      <Button
+                        size="icon"
+                        className="rounded-full absolute -top-2 -right-2 size-6 cursor-pointer"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          clearLastFrame()
+                        }}
+                      >
+                        <X className="size-3" />
+                      </Button>
+                    </>
                   ) : (
                     <>
                       <UploadIcon className="size-5 text-muted-foreground mb-1" />
@@ -160,7 +178,9 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
               </SelectTrigger>
               <SelectContent>
                 {RATIO_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -175,7 +195,9 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
               </SelectTrigger>
               <SelectContent>
                 {DURATION_OPTIONS.map((opt) => (
-                  <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem>
+                  <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -184,13 +206,18 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
         <Field>
           <FieldLabel>分辨率</FieldLabel>
           <FieldContent>
-            <Select value={resolution} onValueChange={(v) => update({ resolution: v as typeof resolution })}>
+            <Select
+              value={resolution}
+              onValueChange={(v) => update({ resolution: v as typeof resolution })}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {RESOLUTION_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -199,13 +226,18 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
         <Field>
           <FieldLabel>音频</FieldLabel>
           <FieldContent>
-            <Select value={String(generateAudio)} onValueChange={(v) => update({ generateAudio: v === 'true' })}>
+            <Select
+              value={String(generateAudio)}
+              onValueChange={(v) => update({ generateAudio: v === 'true' })}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 {AUDIO_OPTIONS.map((opt) => (
-                  <SelectItem key={String(opt.value)} value={String(opt.value)}>{opt.label}</SelectItem>
+                  <SelectItem key={String(opt.value)} value={String(opt.value)}>
+                    {opt.label}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -236,7 +268,9 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
               </SelectTrigger>
               <SelectContent>
                 {storageDirs.map((dir) => (
-                  <SelectItem key={dir} value={dir} className="truncate">{dir}</SelectItem>
+                  <SelectItem key={dir} value={dir} className="truncate">
+                    {dir}
+                  </SelectItem>
                 ))}
                 <SelectItem value="__add__">+ 添加目录...</SelectItem>
               </SelectContent>
@@ -264,9 +298,15 @@ export function CreateForm({ onSubmit }: CreateFormProps): React.JSX.Element {
       <div className="flex items-center gap-4">
         <Button onClick={onSubmit} disabled={submitting}>
           {submitting ? (
-            <><Loader2Icon data-icon="inline-start" className="animate-spin" />创建中...</>
+            <>
+              <Loader2Icon data-icon="inline-start" className="animate-spin" />
+              创建中...
+            </>
           ) : (
-            <><VideoIcon data-icon="inline-start" />生成视频</>
+            <>
+              <VideoIcon data-icon="inline-start" />
+              生成视频
+            </>
           )}
         </Button>
         {createdId && (
