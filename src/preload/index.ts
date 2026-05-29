@@ -34,7 +34,8 @@ const api = {
   },
   logs: {
     query: (options) => ipcRenderer.invoke('logs:query', options),
-    getTaskLog: (taskId) => ipcRenderer.invoke('logs:get-task-log', taskId)
+    getTaskLog: (taskId) => ipcRenderer.invoke('logs:get-task-log', taskId),
+    getById: (id) => ipcRenderer.invoke('logs:get-by-id', id)
   },
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),

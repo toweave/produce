@@ -4,7 +4,7 @@ import { join, relative, resolve } from 'path'
 import { readFile, writeFile, mkdir, unlink, access } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { initDatabase, insertLog, queryLogs, queryLogByTaskId, insertTaskParams, getTaskParamsByTaskId } from './database'
+import { initDatabase, insertLog, queryLogs, queryLogById, queryLogByTaskId, insertTaskParams, getTaskParamsByTaskId } from './database'
 
 const ARK_API_BASE = 'https://ark.cn-beijing.volces.com/api/v3'
 
@@ -398,6 +398,10 @@ app.whenReady().then(() => {
   // --- Logs query IPC handler ---
   ipcMain.handle('logs:query', async (_event, options) => {
     return queryLogs(options)
+  })
+
+  ipcMain.handle('logs:get-by-id', async (_event, id: number) => {
+    return queryLogById(id)
   })
 
   ipcMain.handle('logs:get-task-log', async (_event, taskId: string) => {

@@ -106,6 +106,16 @@ export function queryLogs(options: LogQueryOptions): LogQueryResult {
   return { items, total }
 }
 
+export function queryLogById(id: number): LogRow | null {
+  if (!db) return null
+  try {
+    const stmt = db.prepare(`SELECT * FROM operation_logs WHERE id = @id`)
+    return (stmt.get({ id }) as LogRow) || null
+  } catch {
+    return null
+  }
+}
+
 export function queryLogByTaskId(taskId: string): LogRow | null {
   if (!db) return null
   try {

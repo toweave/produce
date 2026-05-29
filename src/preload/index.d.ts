@@ -100,6 +100,7 @@ interface LogQueryResult {
 interface LogsAPI {
   query: (options: LogQueryOptions) => Promise<LogQueryResult>
   getTaskLog: (taskId: string) => Promise<LogEntry | null>
+  getById: (id: number) => Promise<LogEntry | null>
 }
 
 interface SettingsData {
