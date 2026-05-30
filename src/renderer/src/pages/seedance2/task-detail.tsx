@@ -36,15 +36,23 @@ export default function Seedance2TaskDetailPage(): React.JSX.Element {
   const [apiKeyMissing, setApiKeyMissing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [videoUrl, setVideoUrl] = useState('')
-  const [storageDir, setStorageDir] = useState('')
+  const [storageDir, setStorageDir] = useState(() => {
+    try {
+      return localStorage.getItem('seedance2-storage-current') || ''
+    } catch {
+      return ''
+    }
+  })
   const [keyframes, setKeyframes] = useState<string[]>([])
   const [zoomImage, setZoomImage] = useState<string | null>(null)
   const [refImages, setRefImages] = useState<string[]>([])
   const blobUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    window.api.file.getDefaultPath().then((dir) => setStorageDir(dir)).catch(() => {})
-  }, [])
+    if (!storageDir) {
+      window.api.file.getDefaultPath().then((dir) => setStorageDir(dir)).catch(() => {})
+    }
+  }, [storageDir])
 
   useEffect(() => {
     return () => {
@@ -105,11 +113,11 @@ export default function Seedance2TaskDetailPage(): React.JSX.Element {
       if (result.status === 'succeeded' && result.content?.video_url) {
         const remoteUrl = result.content.video_url
         try {
-          const filename = `Seedance2_${id}_detail_${Date.now()}`
           const localPath = await window.api.file.downloadVideo({
             url: remoteUrl,
             destDir: storageDir,
-            filename
+            filename: `Seedance2_${id}`,
+            taskId: id
           })
           const buffer = await window.api.file.readFileBuffer(localPath)
           const blob = new Blob([buffer], { type: 'video/mp4' })
@@ -121,7 +129,7 @@ export default function Seedance2TaskDetailPage(): React.JSX.Element {
         }
 
         try {
-          const frames = await window.api.file.readKeyframes({ dir: storageDir, taskId: id })
+          const frames = await window.api.file.readKeyframes({ dir: storageDir, taskId: id, prefix: 'Seedance2_' })
           const allFrames: string[] = [
             ...(frames.autoFrames.filter(Boolean) as string[]),
             ...(frames.manualFrames as string[])
@@ -173,7 +181,8 @@ export default function Seedance2TaskDetailPage(): React.JSX.Element {
       await window.api.file.downloadVideo({
         url: task.content.video_url,
         destDir: storageDir,
-        filename: `Seedance2_${task.id}_${Date.now()}`
+        filename: `Seedance2_${task.id}`,
+        taskId: task.id
       })
     } catch { /* fail silently */ }
   }, [task, storageDir])
@@ -230,11 +239,12 @@ export default function Seedance2TaskDetailPage(): React.JSX.Element {
                   <p className="ml-4 text-xs font-mono text-muted-foreground mt-0.5">{task.id}</p>
                 </div>
 
-                <div className="rounded-lg overflow-hidden bg-black mb-4" style={{ maxHeight: '480px' }}>
+                <div className="rounded-lg overflow-hidden bg-black mb-4 w-full max-w-full">
                   <VideoPlayer
                     videoUrl={videoUrl}
                     taskId={task.id}
                     storageDir={storageDir}
+                    versionPrefix="Seedance2_"
                     onKeyframeCapture={handleKeyframeCapture}
                     onDownload={handleDownload}
                   />

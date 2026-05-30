@@ -69,6 +69,14 @@ export default function Seedance2TasksPage(): React.JSX.Element {
     fetchTasks()
   }, [fetchTasks])
 
+  // Auto-refresh when there are active (queued/running) tasks
+  useEffect(() => {
+    const hasActive = tasks.some((t) => t.status === 'queued' || t.status === 'running')
+    if (!hasActive) return
+    const timer = setInterval(fetchTasks, 10000)
+    return () => clearInterval(timer)
+  }, [tasks, fetchTasks])
+
   const handleSelectTask = async (task: TaskItem) => {
     setSelectedId(task.id)
     await selectTask(task)
@@ -348,8 +356,7 @@ function useTaskPreview() {
       if (detail.status === 'succeeded' && detail.content?.video_url) {
         const remoteUrl = detail.content.video_url
         try {
-          const filename = `Seedance2_${task.id}_preview_${Date.now()}`
-          const localPath = await window.api.file.downloadVideo({ url: remoteUrl, destDir: storageDir, filename })
+          const localPath = await window.api.file.downloadVideo({ url: remoteUrl, destDir: storageDir, filename: `Seedance2_${task.id}`, taskId: task.id })
           const buffer = await window.api.file.readFileBuffer(localPath)
           const blob = new Blob([buffer], { type: 'video/mp4' })
           if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
@@ -376,7 +383,8 @@ function useTaskPreview() {
       await window.api.file.downloadVideo({
         url: selectedTask.content.video_url,
         destDir: storageDir,
-        filename: `Seedance2_${selectedTask.id}_${Date.now()}`
+        filename: `Seedance2_${selectedTask.id}`,
+        taskId: selectedTask.id
       })
     } catch { /* fail silently */ }
   }, [selectedTask, storageDir])
@@ -385,7 +393,7 @@ function useTaskPreview() {
 
   const preview = (
     <div className="flex flex-col gap-4">
-      <div className="rounded-lg border border-border bg-card overflow-hidden flex-1 min-h-[200px] flex flex-col">
+      <div className="rounded-lg border border-border bg-card overflow-hidden flex flex-col">
         {!selectedId ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6">
             <ChevronRightIcon className="h-10 w-10" />
@@ -397,12 +405,13 @@ function useTaskPreview() {
             <span className="text-sm">加载中...</span>
           </div>
         ) : selectedTask?.status === 'succeeded' && videoUrl ? (
-          <div className="flex-1 flex flex-col">
-            <div className="flex-1 relative">
+          <div className="flex flex-col">
+            <div className="relative w-full">
               <VideoPlayer
                 videoUrl={videoUrl}
                 taskId={selectedTask.id}
                 storageDir={storageDir}
+                versionPrefix="Seedance2_"
                 onKeyframeCapture={handleKeyframeCapture}
                 onDownload={handleDownload}
               />

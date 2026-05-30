@@ -273,10 +273,21 @@ app.whenReady().then(() => {
     return app.getPath('downloads')
   })
 
-  ipcMain.handle('file:download-video', async (_event, { url, destDir, filename }: { url: string; destDir: string; filename: string }) => {
-    await mkdir(destDir, { recursive: true })
+  ipcMain.handle('file:download-video', async (_event, { url, destDir, filename, taskId }: { url: string; destDir: string; filename: string; taskId?: string }) => {
+    const dir = destDir || app.getPath('downloads')
+    await mkdir(dir, { recursive: true })
+
+    // If taskId is provided, use a deterministic filename so re-downloads reuse the same file
+    const actualFilename = (taskId ? `Seedance2_${taskId}` : filename)
     const ext = '.mp4'
-    const destPath = join(destDir, `${filename}${ext}`)
+    const destPath = join(dir, `${actualFilename}${ext}`)
+
+    // Skip download if file already exists (same taskId = same video)
+    try {
+      await access(destPath)
+      return destPath
+    } catch { /* file doesn't exist, continue to download */ }
+
     const response = await fetch(url)
     if (!response.ok) throw new Error(`下载视频失败: ${response.status}`)
     const buffer = Buffer.from(await response.arrayBuffer())
@@ -285,11 +296,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('file:save-keyframe', async (_event, { base64Data, destDir, filename }: { base64Data: string; destDir: string; filename: string }) => {
-    await mkdir(destDir, { recursive: true })
+    const dir = destDir || app.getPath('downloads')
+    await mkdir(dir, { recursive: true })
     const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
     if (!matches) throw new Error('无效的 Base64 图片数据: ' + (base64Data ? base64Data.substring(0, 50) : '空字符串'))
     const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
-    const destPath = join(destDir, `${filename}.${ext}`)
+    const destPath = join(dir, `${filename}.${ext}`)
     const buffer = Buffer.from(matches[2], 'base64')
     await writeFile(destPath, buffer)
     return destPath
@@ -304,10 +316,11 @@ app.whenReady().then(() => {
     return buffer
   })
 
-  ipcMain.handle('file:read-keyframes', async (_event, { dir, taskId }: { dir: string; taskId: string }) => {
+  ipcMain.handle('file:read-keyframes', async (_event, { dir, taskId, prefix }: { dir: string; taskId: string; prefix?: string }) => {
+    const filePrefix = prefix || 'Seedance_'
     const autoFrames: (string | null)[] = []
     for (let i = 0; i < 6; i++) {
-      const path = join(dir, `Seedance_${taskId}_keyframe_${i}.png`)
+      const path = join(dir, `${filePrefix}${taskId}_keyframe_${i}.png`)
       try {
         const buffer = await readFile(path)
         autoFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
@@ -317,7 +330,7 @@ app.whenReady().then(() => {
     }
     const manualFrames: string[] = []
     for (let i = 0; ; i++) {
-      const path = join(dir, `Seedance_${taskId}_manual_${i}.png`)
+      const path = join(dir, `${filePrefix}${taskId}_manual_${i}.png`)
       try {
         const buffer = await readFile(path)
         manualFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)

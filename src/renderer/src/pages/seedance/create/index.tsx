@@ -7,14 +7,12 @@ import { VideoPlayer } from '../components/video-player'
 import { useSeedanceCreateStore } from '@/stores/seedance-create-store'
 import { useFormPersistence, useStorageInit } from './hooks/use-form-persistence'
 import { useSessionRestore } from './hooks/use-session-restore'
-import { useAutoCapture } from './hooks/use-auto-capture'
 
 const STORAGE_LAST_SESSION_KEY = 'seedance-last-session'
 
 export default function SeedanceCreatePage(): React.JSX.Element {
   // DOM refs
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const justCreated = useRef(false)
   const blobUrlRef = useRef<string | null>(null)
 
   // Store selectors
@@ -24,7 +22,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   useFormPersistence()
   useStorageInit()
   useSessionRestore(currentDir)
-  useAutoCapture({ videoRef, justCreated })
 
   // Cleanup blob URL on unmount
   useEffect(() => {
@@ -45,7 +42,6 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
         if (status === 'succeeded') {
           stopped = true
-          justCreated.current = true
           const content = result.content as Record<string, unknown> | undefined
           const remoteUrl = String(content?.video_url || '')
           const { currentDir } = useSeedanceCreateStore.getState()

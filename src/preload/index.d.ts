@@ -19,10 +19,10 @@ interface DialogAPI {
 interface FileAPI {
   readBase64: (filePath: string) => Promise<string>
   getDefaultPath: () => Promise<string>
-  downloadVideo: (opts: { url: string; destDir: string; filename: string }) => Promise<string>
+  downloadVideo: (opts: { url: string; destDir: string; filename: string; taskId?: string }) => Promise<string>
   saveKeyframe: (opts: { base64Data: string; destDir: string; filename: string }) => Promise<string>
   readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
-  readKeyframes: (opts: { dir: string; taskId: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
+  readKeyframes: (opts: { dir: string; taskId: string; prefix?: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
   deleteFile: (filePath: string) => Promise<void>
   resolveImagePath: (opts: { storageDir: string; relativePath: string }) => Promise<string | null>
 }

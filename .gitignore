@@ -13,3 +13,20 @@ out
 # env
 .env
 
+# media files
+*.mp4
+*.mov
+*.avi
+*.webm
+*.mkv
+*.flv
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.bmp
+*.tiff
+*.gif
+*.heic
+*.heif
+
