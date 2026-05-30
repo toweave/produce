@@ -3,7 +3,7 @@ import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import { CreateForm } from './components/create-form'
 import { KeyframeGrid } from './components/keyframe-grid'
-import { VideoPlayer } from '../components/video-player'
+import VideoPlayer from '@/components/video-player'
 import { useSeedanceCreateStore } from '@/stores/seedance-create-store'
 import { useFormPersistence, useStorageInit } from './hooks/use-form-persistence'
 import { useSessionRestore } from './hooks/use-session-restore'
@@ -17,6 +17,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
 
   // Store selectors
   const currentDir = useSeedanceCreateStore((s) => s.currentDir)
+  const videoUrl = useSeedanceCreateStore((s) => s.videoUrl)
+  const pollError = useSeedanceCreateStore((s) => s.pollError)
+  const createdId = useSeedanceCreateStore((s) => s.createdId)
+  const taskStatus = useSeedanceCreateStore((s) => s.taskStatus)
 
   // Hooks
   useFormPersistence()
@@ -46,6 +50,13 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           const remoteUrl = String(content?.video_url || '')
           const { currentDir } = useSeedanceCreateStore.getState()
 
+          // Save session data immediately (before slow download)
+          const sessionBase = { taskId, remoteUrl, dir: currentDir }
+          localStorage.setItem(
+            STORAGE_LAST_SESSION_KEY,
+            JSON.stringify({ ...sessionBase, localPath: '' })
+          )
+
           try {
             const localPath = await window.api.file.downloadVideo({
               url: remoteUrl,
@@ -57,9 +68,10 @@ export default function SeedanceCreatePage(): React.JSX.Element {
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
             blobUrlRef.current = URL.createObjectURL(blob)
             useSeedanceCreateStore.getState().update({ videoUrl: blobUrlRef.current })
+            // Update localStorage with local path once download completes
             localStorage.setItem(
               STORAGE_LAST_SESSION_KEY,
-              JSON.stringify({ taskId, remoteUrl, localPath, dir: currentDir })
+              JSON.stringify({ ...sessionBase, localPath })
             )
           } catch {
             useSeedanceCreateStore.getState().update({ videoUrl: remoteUrl })
@@ -220,44 +232,56 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     useSeedanceCreateStore.getState().clearKeyframes()
   }, [])
 
-  // Keyboard frame-stepping when paused
-  useEffect(() => {
-    const handler = (e: KeyboardEvent): void => {
-      const video = videoRef.current
-      if (!video || !video.paused) return
-      const step = 1 / 24
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        video.currentTime = Math.min(video.duration || 0, video.currentTime + step)
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        video.currentTime = Math.max(0, video.currentTime - step)
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
   const setImageData = useSeedanceCreateStore((s) => s.update)
   const setLastFrameData = useSeedanceCreateStore((s) => s.update)
+
+  const renderRight = (): React.JSX.Element => {
+    if (pollError && !videoUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 min-h-[240px]">
+          <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+            {pollError}
+          </div>
+          <button
+            onClick={() => useSeedanceCreateStore.getState().resetPanel()}
+            className="text-sm text-primary hover:underline"
+          >
+            重新开始
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex flex-col gap-4">
+        <VideoPlayer
+          videoUrl={videoUrl}
+          loading={!!createdId && !videoUrl}
+          loadingLabel={taskStatus === 'succeeded' ? '任务已完成，正在下载视频...' : '视频生成中...'}
+          taskId={createdId}
+          storageDir={currentDir}
+          videoRef={videoRef}
+          versionPrefix="Seedance_"
+          onKeyframeCapture={(dataUrl) => {
+            useSeedanceCreateStore.getState().addManualKeyframe(dataUrl)
+          }}
+        />
+        <KeyframeGrid
+          onSetFirstFrame={(dataUrl) => setImageData({ imageData: dataUrl })}
+          onSetLastFrame={(dataUrl) =>
+            setLastFrameData({ lastFrameData: dataUrl, useLastFrame: true })
+          }
+          onDeleteManualKeyframe={handleDeleteManualKeyframe}
+          onClearAllKeyframes={handleClearAllKeyframes}
+        />
+      </div>
+    )
+  }
 
   return (
     <TwoColumnLayout
       left={<CreateForm onSubmit={handleSubmit} />}
-      right={
-        <div className="flex flex-col gap-4">
-          <VideoPlayer videoRef={videoRef} />
-          <KeyframeGrid
-            onSetFirstFrame={(dataUrl) => setImageData({ imageData: dataUrl })}
-            onSetLastFrame={(dataUrl) =>
-              setLastFrameData({ lastFrameData: dataUrl, useLastFrame: true })
-            }
-            onDeleteManualKeyframe={handleDeleteManualKeyframe}
-            onClearAllKeyframes={handleClearAllKeyframes}
-          />
-        </div>
-      }
+      right={<div className="flex flex-col h-full overflow-y-auto">{renderRight()}</div>}
     />
   )
 }

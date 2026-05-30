@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import { CreateForm, type CreateFormMeta } from './components/create-form'
 import { KeyframeGrid } from './components/keyframe-grid'
-import { VideoPlayer } from './components/video-player'
+import VideoPlayer from '@/components/video-player'
 import { useFormPersistence } from './hooks/use-form-persistence'
 import { useSessionRestore } from './hooks/use-session-restore'
 import { useSeedance2CreateStore } from '@/stores/seedance2-create-store'
@@ -199,7 +199,14 @@ export default function Seedance2CreatePage(): React.JSX.Element {
             stopped = true
             sendNotification('Seedance 2.0 视频生成完成', `任务 ${taskId.slice(0, 20)}… 已成功生成`)
 
-            // Try to download first → show local blob URL (like seedance 1.5)
+            // Save session data immediately (before slow download), including form params for restore
+            const sessionBase = { taskId, remoteUrl, dir: storageDirRef.current, formParams: lastMetaRef.current || undefined }
+            localStorage.setItem(
+              STORAGE_LAST_SESSION_KEY,
+              JSON.stringify({ ...sessionBase, localPath: '' })
+            )
+
+            // Try to download first → show local blob URL
             try {
               const localPath = await window.api.file.downloadVideo({
                 url: remoteUrl,
@@ -212,17 +219,14 @@ export default function Seedance2CreatePage(): React.JSX.Element {
               if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
               blobUrlRef.current = URL.createObjectURL(blob)
               useSeedance2CreateStore.getState().update({ videoUrl: blobUrlRef.current })
+              // Update localStorage with local path once download completes
               localStorage.setItem(
                 STORAGE_LAST_SESSION_KEY,
-                JSON.stringify({ taskId, remoteUrl, localPath, dir: storageDirRef.current })
+                JSON.stringify({ ...sessionBase, localPath })
               )
             } catch {
               // Fall back to remote URL if download fails
               useSeedance2CreateStore.getState().update({ videoUrl: remoteUrl })
-              localStorage.setItem(
-                STORAGE_LAST_SESSION_KEY,
-                JSON.stringify({ taskId, remoteUrl, localPath: '', dir: storageDirRef.current })
-              )
             }
           } else {
             // Status is 'succeeded' but no video URL yet — continue polling
@@ -401,6 +405,8 @@ export default function Seedance2CreatePage(): React.JSX.Element {
   const autoKeyframes = useSeedance2CreateStore((s) => s.autoKeyframes)
   const manualKeyframes = useSeedance2CreateStore((s) => s.manualKeyframes)
   const videoUrl = useSeedance2CreateStore((s) => s.videoUrl)
+  const createdIdFromStore = useSeedance2CreateStore((s) => s.createdId)
+  const taskStatus = useSeedance2CreateStore((s) => s.taskStatus)
 
   return (
     <TwoColumnLayout
@@ -414,8 +420,19 @@ export default function Seedance2CreatePage(): React.JSX.Element {
         onGenModeChange={handleGenModeChange}
       />}
       right={
-        <div className="flex flex-col gap-4 h-full">
-          <VideoPlayer videoRef={videoRef} />
+        <div className="flex flex-col gap-4 h-full overflow-y-auto">
+          <VideoPlayer
+            videoUrl={videoUrl}
+            loading={!!createdIdFromStore && !videoUrl}
+            loadingLabel={taskStatus === 'succeeded' ? '任务已完成，正在下载视频...' : '视频生成中...'}
+            taskId={createdIdFromStore}
+            storageDir={storageDir}
+            videoRef={videoRef}
+            versionPrefix="Seedance2_"
+            onKeyframeCapture={(dataUrl) => {
+              useSeedance2CreateStore.getState().addManualKeyframe(dataUrl)
+            }}
+          />
           <KeyframeGrid
             autoKeyframes={autoKeyframes}
             manualKeyframes={manualKeyframes}

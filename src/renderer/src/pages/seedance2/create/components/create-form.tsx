@@ -139,19 +139,19 @@ export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange,
       setLastFrameData(initialParams.images[1].dataUri || null)
     }
     if (initialParams.generationMode === 'multi-modal-ref') {
-      setImages(initialParams.images.map((img, idx) => ({
+      setImages((initialParams.images || []).map((img, idx) => ({
         id: generateId(),
         dataUri: img.dataUri,
         filePath: img.filePath,
         name: img.name || `image ${idx + 1}`
       })))
-      setVideos(initialParams.videos.map((v, idx) => ({
+      setVideos((initialParams.videos || []).map((v, idx) => ({
         id: generateId(),
         dataUri: v.dataUri,
         filePath: v.filePath,
         name: v.name || `video ${idx + 1}`
       })))
-      setAudioFiles(initialParams.audioFiles.map((a, idx) => ({
+      setAudioFiles((initialParams.audioFiles || []).map((a, idx) => ({
         id: generateId(),
         dataUri: a.dataUri,
         filePath: a.filePath,
