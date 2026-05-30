@@ -288,6 +288,9 @@ app.whenReady().then(() => {
       return destPath
     } catch { /* file doesn't exist, continue to download */ }
 
+    // Guard: skip fetch when no URL provided (caller just wanted to check file existence)
+    if (!url) throw new Error('文件未找到')
+
     const response = await fetch(url)
     if (!response.ok) throw new Error(`下载视频失败: ${response.status}`)
     const buffer = Buffer.from(await response.arrayBuffer())

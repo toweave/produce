@@ -1,17 +1,17 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react'
-import { Loader2Icon, ChevronRightIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { TwoColumnLayout } from '@/components/two-column-layout'
-import VideoPlayer from '@/components/video-player'
 import { CreateForm, type CreateFormMeta } from './components/create-form'
 import { KeyframeGrid } from './components/keyframe-grid'
+import { VideoPlayer } from './components/video-player'
 import { useFormPersistence } from './hooks/use-form-persistence'
 import { useSessionRestore } from './hooks/use-session-restore'
-import { STATUS_LABEL } from '../constants'
+import { useSeedance2CreateStore } from '@/stores/seedance2-create-store'
 import type { TaskDetail } from '../types'
 
 const STORAGE_DIRS_KEY = 'seedance2-storage-dirs'
 const STORAGE_CURRENT_KEY = 'seedance2-storage-current'
+const STORAGE_LAST_SESSION_KEY = 'seedance2-last-session'
 
 /** Send a system desktop notification */
 function sendNotification(title: string, body: string): void {
@@ -34,35 +34,30 @@ export default function Seedance2CreatePage(): React.JSX.Element {
   const blobUrlRef = useRef<string | null>(null)
   const lastSessionRef = useRef<string | null>(null)
 
-  // Task state
-  const [createdId, setCreatedId] = useState('')
-  const [taskStatus, setTaskStatus] = useState('')
-  const [videoUrl, setVideoUrl] = useState('')
-  const [pollError, setPollError] = useState('')
-  const [keyframes, setKeyframes] = useState<string[]>([])
+  // Storage directories (local UI state, passed to CreateForm)
   const [storageDir, setStorageDir] = useState('')
   const [storageDirs, setStorageDirs] = useState<string[]>([])
   const lastMetaRef = useRef<CreateFormMeta | null>(null)
+  const storageDirRef = useRef(storageDir)
+  storageDirRef.current = storageDir
 
-  /** Save the last session (video + form params) to localStorage */
-  const saveSession = useCallback((taskId: string, localPath: string, remoteUrl: string) => {
-    const session = {
-      taskId,
-      remoteUrl,
-      localPath: localPath || undefined,
-      dir: storageDir,
-      formParams: lastMetaRef.current || undefined
-    }
-    localStorage.setItem('seedance2-last-session', JSON.stringify(session))
-  }, [storageDir])
+  // Track current genMode from CreateForm for frame capture routing
+  const [currentGenMode, setCurrentGenMode] = useState<string>('multi-modal-ref')
+  const [capturedFrameAction, setCapturedFrameAction] = useState<{
+    type: 'first-frame' | 'last-frame' | 'reference-image'
+    dataUrl: string
+  } | null>(null)
+
+  // Form state for persistence
+  const [formState, setFormState] = useState({
+    prompt: '', ratio: 'adaptive', duration: 5, resolution: '720p',
+    generateAudio: true, watermark: false, genMode: 'multi-modal-ref'
+  })
+  const [firstFrameData, setFirstFrameData] = useState<string | null>(null)
+  const [lastFrameDataLF, setLastFrameDataLF] = useState<string | null>(null)
 
   // Restored form params from last session
   const [initialFormParams, setInitialFormParams] = useState<CreateFormMeta | null | undefined>(undefined)
-
-  // Form state for persistence
-  const [formState, setFormState] = useState({ prompt: '', ratio: 'adaptive', duration: 5, resolution: '720p', generateAudio: true, watermark: false, genMode: 'multi-modal-ref' })
-  const [firstFrameData, setFirstFrameData] = useState<string | null>(null)
-  const [lastFrameDataLF, setLastFrameDataLF] = useState<string | null>(null)
 
   // Initialize storage directories from localStorage or default
   useEffect(() => {
@@ -127,13 +122,14 @@ export default function Seedance2CreatePage(): React.JSX.Element {
   }) => {
     if (data.createdId && data.createdId !== lastSessionRef.current) {
       lastSessionRef.current = data.createdId
-      setCreatedId(data.createdId)
-      if (data.videoUrl) setVideoUrl(data.videoUrl)
+      useSeedance2CreateStore.getState().update({
+        createdId: data.createdId,
+        videoUrl: data.videoUrl
+      })
       if (data.storageDir) {
         setStorageDir(data.storageDir)
         localStorage.setItem(STORAGE_CURRENT_KEY, data.storageDir)
       }
-      // Restore form params into the form
       if (data.formParams) {
         setInitialFormParams(data.formParams as unknown as CreateFormMeta)
       }
@@ -141,7 +137,9 @@ export default function Seedance2CreatePage(): React.JSX.Element {
   }, [])
 
   const handleKeyframesRestore = useCallback((frames: string[]) => {
-    if (frames.length > 0) setKeyframes(frames)
+    if (frames.length > 0) {
+      useSeedance2CreateStore.getState().update({ manualKeyframes: frames })
+    }
   }, [])
 
   useSessionRestore(storageDir, {
@@ -149,80 +147,142 @@ export default function Seedance2CreatePage(): React.JSX.Element {
     onKeyframesRestore: handleKeyframesRestore
   })
 
+  // Cleanup blob URL on unmount
   useEffect(() => {
     return () => {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     }
   }, [])
 
-  const pollTask = useCallback((taskId: string) => {
-    let stopped = false
-    const poll = async () => {
-      while (!stopped) {
-        await new Promise((r) => setTimeout(r, 5000))
-        if (stopped) break
-        try {
-          const result = await window.api.seedance2.getTask(taskId) as TaskDetail
-          const status = result.status || ''
-          setTaskStatus(status)
+  const pollTask = useCallback(async (taskId: string) => {
+    // Try loading local file first — already downloaded from a previous session
+    const tryLocalFile = async (): Promise<boolean> => {
+      try {
+        const localPath = await window.api.file.downloadVideo({
+          url: '',
+          destDir: storageDirRef.current,
+          filename: `Seedance2_${taskId}`,
+          taskId
+        })
+        const buffer = await window.api.file.readFileBuffer(localPath)
+        const blob = new Blob([buffer], { type: 'video/mp4' })
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = URL.createObjectURL(blob)
+        useSeedance2CreateStore.getState().update({ videoUrl: blobUrlRef.current })
+        return true
+      } catch {
+        return false
+      }
+    }
 
-          if (status === 'succeeded') {
+    // Check local file first
+    if (await tryLocalFile()) {
+      useSeedance2CreateStore.getState().update({ taskStatus: 'succeeded' })
+      return
+    }
+
+    // No local file — poll API every 5s for up to 5 minutes
+    const MAX_RETRIES = 60
+    let stopped = false
+    let succeededWithoutUrl = false
+
+    for (let retry = 0; retry < MAX_RETRIES && !stopped; retry++) {
+      await new Promise((r) => setTimeout(r, 5000))
+      try {
+        const result = await window.api.seedance2.getTask(taskId) as TaskDetail
+        const status = result.status || ''
+        useSeedance2CreateStore.getState().update({ taskStatus: status })
+
+        if (status === 'succeeded') {
+          const remoteUrl = result.content?.video_url
+          if (remoteUrl) {
             stopped = true
             sendNotification('Seedance 2.0 视频生成完成', `任务 ${taskId.slice(0, 20)}… 已成功生成`)
-            const remoteUrl = result.content?.video_url
-            if (remoteUrl) {
-              try {
-                const localPath = await window.api.file.downloadVideo({
-                  url: remoteUrl,
-                  destDir: storageDir,
-                  filename: `Seedance2_${taskId}`,
-                  taskId
-                })
-                const buffer = await window.api.file.readFileBuffer(localPath)
-                const blob = new Blob([buffer], { type: 'video/mp4' })
-                if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-                blobUrlRef.current = URL.createObjectURL(blob)
-                setVideoUrl(blobUrlRef.current)
-                // Save last session with form params — loads when reopening the app
-                saveSession(taskId, remoteUrl, localPath)
-              } catch {
-                setVideoUrl(remoteUrl)
-                saveSession(taskId, remoteUrl, '')
-              }
+
+            // Try to download first → show local blob URL (like seedance 1.5)
+            try {
+              const localPath = await window.api.file.downloadVideo({
+                url: remoteUrl,
+                destDir: storageDirRef.current,
+                filename: `Seedance2_${taskId}`,
+                taskId
+              })
+              const buffer = await window.api.file.readFileBuffer(localPath)
+              const blob = new Blob([buffer], { type: 'video/mp4' })
+              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+              blobUrlRef.current = URL.createObjectURL(blob)
+              useSeedance2CreateStore.getState().update({ videoUrl: blobUrlRef.current })
+              localStorage.setItem(
+                STORAGE_LAST_SESSION_KEY,
+                JSON.stringify({ taskId, remoteUrl, localPath, dir: storageDirRef.current })
+              )
+            } catch {
+              // Fall back to remote URL if download fails
+              useSeedance2CreateStore.getState().update({ videoUrl: remoteUrl })
+              localStorage.setItem(
+                STORAGE_LAST_SESSION_KEY,
+                JSON.stringify({ taskId, remoteUrl, localPath: '', dir: storageDirRef.current })
+              )
             }
-          } else if (status === 'failed') {
-            stopped = true
-            sendNotification('Seedance 2.0 视频生成失败', `任务 ${taskId.slice(0, 20)}… 生成失败，请检查参数后重试`)
-            const errObj = result.error
-            setPollError(errObj?.message ? String(errObj.message) : '视频生成失败')
-          } else if (status === 'cancelled' || status === 'expired') {
-            stopped = true
-            setPollError(`任务已${status === 'cancelled' ? '取消' : '过期'}`)
+          } else {
+            // Status is 'succeeded' but no video URL yet — continue polling
+            succeededWithoutUrl = true
           }
-        } catch {
-          setPollError('查询任务状态失败')
+        } else if (status === 'failed') {
           stopped = true
+          sendNotification('Seedance 2.0 视频生成失败', `任务 ${taskId.slice(0, 20)}… 生成失败，请检查参数后重试`)
+          const errObj = result.error
+          useSeedance2CreateStore.getState().update({
+            pollError: errObj?.message ? String(errObj.message) : '视频生成失败'
+          })
+        } else if (status === 'cancelled' || status === 'expired') {
+          stopped = true
+          useSeedance2CreateStore.getState().update({
+            pollError: `任务已${status === 'cancelled' ? '取消' : '过期'}`
+          })
+        }
+      } catch {
+        if (retry >= MAX_RETRIES - 1) {
+          stopped = true
+          useSeedance2CreateStore.getState().update({ pollError: '查询任务状态失败，请检查网络后重试' })
         }
       }
     }
-    poll()
-  }, [storageDir])
+
+    if (!stopped) {
+      if (succeededWithoutUrl) {
+        useSeedance2CreateStore.getState().update({
+          pollError: '视频已生成但获取播放地址超时，请到任务列表中查看'
+        })
+      } else {
+        useSeedance2CreateStore.getState().update({
+          pollError: '视频生成超时，请稍后查看任务列表'
+        })
+      }
+    }
+  }, [])
 
   const handleSubmit = useCallback(async (apiParams: Record<string, unknown>, meta: CreateFormMeta) => {
-    // Keep meta for session save when the task completes
     lastMetaRef.current = meta
 
     const result = await window.api.seedance2.createTask(apiParams) as { id: string }
     const id = result.id
-    setCreatedId(id)
-    setTaskStatus('queued')
-    setVideoUrl('')
-    setPollError('')
-    setKeyframes([])
 
-    // Save task params (best-effort)
+    useSeedance2CreateStore.getState().update({
+      createdId: id,
+      taskStatus: 'queued',
+      videoUrl: '',
+      pollError: ''
+    })
+
+    // Save task params (best-effort) — use ref for fresh storageDir
     try {
-      const dir = storageDir || await window.api.file.getDefaultPath()
+      const dir = storageDirRef.current || await window.api.file.getDefaultPath()
+      if (dir !== storageDirRef.current) {
+        storageDirRef.current = dir
+        setStorageDir(dir)
+        localStorage.setItem(STORAGE_CURRENT_KEY, dir)
+      }
 
       const firstFrameImg = meta.images?.[0]
       const firstFrameRelPath = firstFrameImg?.filePath
@@ -296,143 +356,51 @@ export default function Seedance2CreatePage(): React.JSX.Element {
       /* task params save is best-effort */
     }
 
-    pollTask(id)
+    pollTask(id).catch(() => {})
     return { id }
-  }, [pollTask, storageDir])
+  }, [pollTask])
 
   const handleReset = useCallback(() => {
-    setCreatedId('')
-    setTaskStatus('')
-    setVideoUrl('')
-    setPollError('')
-    setKeyframes([])
+    useSeedance2CreateStore.getState().resetPanel()
   }, [])
 
-  const handleKeyframeCapture = useCallback((dataUrl: string) => {
-    setKeyframes((prev) => [...prev, dataUrl])
-    // Save manual keyframe to disk
-    if (createdId && storageDir) {
-      window.api.file.saveKeyframe({
-        base64Data: dataUrl,
-        destDir: storageDir,
-        filename: `Seedance2_${createdId}_manual_${Date.now()}`
-      }).catch(() => {})
-    }
-  }, [createdId, storageDir])
-
   const handleDeleteManualKeyframe = useCallback(async (index: number) => {
-    // Remove from state (manual keyframes are appended after auto keyframes)
-    setKeyframes((prev) => prev.filter((_, i) => i !== index))
+    useSeedance2CreateStore.getState().removeManualKeyframe(index)
   }, [])
 
   const handleClearAllKeyframes = useCallback(async () => {
     if (!window.confirm('确定清空所有关键帧？此操作不可撤销')) return
-    setKeyframes([])
+    useSeedance2CreateStore.getState().clearKeyframes()
+  }, [])
+
+  /** Track genMode changes from CreateForm */
+  const handleGenModeChange = useCallback((mode: string) => {
+    setCurrentGenMode(mode)
+    setFormState((prev) => ({ ...prev, genMode: mode }))
   }, [])
 
   const handleSetFirstFrame = useCallback((dataUrl: string) => {
     setFirstFrameData(dataUrl)
-  }, [])
+    if (currentGenMode === 'first-frame' || currentGenMode === 'first-last-frame') {
+      setCapturedFrameAction({ type: 'first-frame', dataUrl })
+    } else if (currentGenMode === 'multi-modal-ref') {
+      setCapturedFrameAction({ type: 'reference-image', dataUrl })
+    }
+  }, [currentGenMode])
 
   const handleSetLastFrame = useCallback((dataUrl: string) => {
     setLastFrameDataLF(dataUrl)
-  }, [])
-
-  const handleDownload = useCallback(async () => {
-    // Download is handled by VideoPlayer's onDownload
-  }, [])
-
-  const renderRight = () => {
-    if (!createdId) {
-      return (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground min-h-[300px]">
-          <ChevronRightIcon className="h-10 w-10" />
-          <span className="text-sm">填写左侧参数后点击"生成视频"</span>
-        </div>
-      )
+    if (currentGenMode === 'first-last-frame') {
+      setCapturedFrameAction({ type: 'last-frame', dataUrl })
+    } else if (currentGenMode === 'multi-modal-ref') {
+      setCapturedFrameAction({ type: 'reference-image', dataUrl })
     }
+  }, [currentGenMode])
 
-    if (pollError && !videoUrl) {
-      return (
-        <div className="flex-1 flex flex-col items-center justify-center gap-3 min-h-[300px]">
-          <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive max-w-sm">
-            {pollError}
-          </div>
-          <button
-            onClick={handleReset}
-            className="text-sm text-primary hover:underline"
-          >
-            重新开始
-          </button>
-        </div>
-      )
-    }
-
-    if (videoUrl) {
-      return (
-        <div className="flex-1 flex flex-col gap-4">
-          <div className="rounded-lg border border-border bg-card overflow-hidden w-full">
-            <VideoPlayer
-              videoRef={videoRef}
-              videoUrl={videoUrl}
-              taskId={createdId}
-              storageDir={storageDir}
-              versionPrefix="Seedance2_"
-              onKeyframeCapture={handleKeyframeCapture}
-              onDownload={handleDownload}
-            />
-          </div>
-
-          {/* Keyframe Grid — keyframes are only added when user clicks the capture button */}
-          <KeyframeGrid
-            autoKeyframes={[]}
-            manualKeyframes={keyframes}
-            capturingAuto={false}
-            hasVideo={!!videoUrl}
-            onSetFirstFrame={handleSetFirstFrame}
-            onSetLastFrame={handleSetLastFrame}
-            onDeleteManualKeyframe={handleDeleteManualKeyframe}
-            onClearAllKeyframes={handleClearAllKeyframes}
-          />
-
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate(`/seedance2/tasks/${createdId}`)}
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              查看任务详情
-            </button>
-            <button
-              onClick={handleReset}
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-            >
-              继续创作
-            </button>
-          </div>
-        </div>
-      )
-    }
-
-    // Loading / polling state
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground min-h-[300px]">
-        <Loader2Icon className="h-8 w-8 animate-spin" />
-        <span className="text-sm">
-          {taskStatus === 'queued' ? '任务排队中...' : '正在生成视频...'}
-        </span>
-        <span className="text-xs font-mono">ID: {createdId}</span>
-        <span className="text-xs text-muted-foreground">
-          状态：{STATUS_LABEL[taskStatus] || taskStatus}
-        </span>
-        <button
-          onClick={() => navigate(`/seedance2/tasks/${createdId}`)}
-          className="text-xs text-primary hover:underline mt-2"
-        >
-          查看任务详情
-        </button>
-      </div>
-    )
-  }
+  // Read keyframe/manualKeyframe counts from store for KeyframeGrid props
+  const autoKeyframes = useSeedance2CreateStore((s) => s.autoKeyframes)
+  const manualKeyframes = useSeedance2CreateStore((s) => s.manualKeyframes)
+  const videoUrl = useSeedance2CreateStore((s) => s.videoUrl)
 
   return (
     <TwoColumnLayout
@@ -442,8 +410,40 @@ export default function Seedance2CreatePage(): React.JSX.Element {
         currentDir={storageDir}
         onStorageChange={handleStorageChange}
         initialParams={initialFormParams}
+        capturedFrame={capturedFrameAction}
+        onGenModeChange={handleGenModeChange}
       />}
-      right={<div className="flex flex-col gap-4 h-full">{renderRight()}</div>}
+      right={
+        <div className="flex flex-col gap-4 h-full">
+          <VideoPlayer videoRef={videoRef} />
+          <KeyframeGrid
+            autoKeyframes={autoKeyframes}
+            manualKeyframes={manualKeyframes}
+            capturingAuto={false}
+            hasVideo={!!videoUrl}
+            onSetFirstFrame={handleSetFirstFrame}
+            onSetLastFrame={currentGenMode !== 'first-frame' ? handleSetLastFrame : undefined}
+            onDeleteManualKeyframe={handleDeleteManualKeyframe}
+            onClearAllKeyframes={handleClearAllKeyframes}
+          />
+          {videoUrl && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate(`/seedance2/tasks/${useSeedance2CreateStore.getState().createdId}`)}
+                className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                查看任务详情
+              </button>
+              <button
+                onClick={handleReset}
+                className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+              >
+                继续创作
+              </button>
+            </div>
+          )}
+        </div>
+      }
     />
   )
 }

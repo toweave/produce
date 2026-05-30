@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { VideoIcon, UploadIcon, X, ImageIcon, FilmIcon, AudioLinesIcon, SettingsIcon, Loader2Icon, ChevronDownIcon, ChevronRightIcon } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -49,6 +50,11 @@ function generateId(): string {
   return `media_${++idCounter}_${Math.random().toString(36).substring(2, 8)}`
 }
 
+interface CapturedFrameData {
+  type: 'first-frame' | 'last-frame' | 'reference-image'
+  dataUrl: string
+}
+
 type GenerationMode = 'first-frame' | 'first-last-frame' | 'multi-modal-ref'
 
 const GEN_MODE_OPTIONS: { value: GenerationMode; label: string; desc: string }[] = [
@@ -85,9 +91,13 @@ interface CreateFormProps {
   onStorageChange: (val: string) => Promise<void>
   /** Restore form params from a previous session on mount */
   initialParams?: CreateFormMeta | null
+  /** Captured frame data from the keyframe grid, processed via useEffect */
+  capturedFrame?: CapturedFrameData | null
+  /** Notify parent of generation mode changes */
+  onGenModeChange?: (mode: string) => void
 }
 
-export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange, initialParams }: CreateFormProps): React.JSX.Element {
+export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange, initialParams, capturedFrame, onGenModeChange }: CreateFormProps): React.JSX.Element {
   const navigate = useNavigate()
 
   // Generation mode
@@ -102,7 +112,9 @@ export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange,
   useEffect(() => {
     if (!initialParams || restoredRef.current) return
     restoredRef.current = true
-    setGenMode((initialParams.generationMode || 'multi-modal-ref') as GenerationMode)
+    const restoredGenMode = (initialParams.generationMode || 'multi-modal-ref') as GenerationMode
+    setGenMode(restoredGenMode)
+    onGenModeChange?.(restoredGenMode)
     setModel((initialParams.model || 'doubao-seedance-2-0-260128') as ModelId)
     setPrompt(initialParams.prompt || '')
     setRatio((initialParams.ratio || '16:9') as Ratio)
@@ -146,7 +158,34 @@ export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange,
         name: a.name || `audio ${idx + 1}`
       })))
     }
-  }, [initialParams])
+  }, [initialParams, onGenModeChange])
+
+  // Process captured frames from the KeyframeGrid (first/last/reference-image)
+  useEffect(() => {
+    if (!capturedFrame) return
+
+    switch (capturedFrame.type) {
+      case 'first-frame': {
+        setImageData(capturedFrame.dataUrl)
+        setImageFilePath('')
+        setImageName(`截图首帧 - ${new Date().toLocaleTimeString()}`)
+        break
+      }
+      case 'last-frame': {
+        setLastFrameData(capturedFrame.dataUrl)
+        break
+      }
+      case 'reference-image': {
+        setImages((prev) => {
+          if (prev.length >= 9) return prev
+          // Avoid inserting duplicates
+          if (prev.some((img) => img.dataUri === capturedFrame.dataUrl)) return prev
+          return [...prev, { id: generateId(), dataUri: capturedFrame.dataUrl, name: `截图参考 ${prev.length + 1}` }]
+        })
+        break
+      }
+    }
+  }, [capturedFrame])
 
   // Images depend on mode: first-frame (one image), first-last-frame (two images), multi-modal (array)
   const [imageData, setImageData] = useState<string | null>(null)
@@ -182,6 +221,7 @@ export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange,
   // Switch generation mode — clear incompatible state
   const handleModeChange = useCallback((mode: GenerationMode) => {
     setGenMode(mode)
+    onGenModeChange?.(mode)
     // Clear incompatible media on mode switch
     if (mode !== 'multi-modal-ref') {
       setImages([])
@@ -197,7 +237,7 @@ export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange,
     if (mode === 'first-frame') {
       setLastFrameData(null)
     }
-  }, [])
+  }, [onGenModeChange])
 
   const handleAddImage = useCallback(async () => {
     if (genMode === 'first-frame' && imageData) return
@@ -389,8 +429,19 @@ export function CreateForm({ onSubmit, storageDirs, currentDir, onStorageChange,
           : []
       }
 
-      const result = await onSubmit(params, meta)
-      if (!result) return
+      // Show loading toast while waiting for the API response
+      const toastId = toast.loading('正在创建生成任务...')
+      try {
+        const result = await onSubmit(params, meta) as { id: string } | undefined
+        toast.success('视频生成任务已创建', {
+          id: toastId,
+          description: result?.id ? `任务 ID: ${result.id.slice(0, 12)}...` : undefined
+        })
+        if (!result) return
+      } catch (submitErr) {
+        toast.error('创建任务失败', { id: toastId })
+        throw submitErr
+      }
     } catch (err) {
       const { message, isMissing } = handleApiError(err, '2.0', '创建任务失败')
       setError(message)
