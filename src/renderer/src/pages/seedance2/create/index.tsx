@@ -28,11 +28,28 @@ function sendNotification(title: string, body: string): void {
   } catch { /* Notification API not available */ }
 }
 
+/** Save/update the last-session cache to localStorage */
+function updateSessionCache(
+  taskId: string,
+  overrides: Record<string, unknown>
+): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+    const existing = raw ? JSON.parse(raw) : {}
+    localStorage.setItem(
+      STORAGE_LAST_SESSION_KEY,
+      JSON.stringify({ ...existing, ...overrides, taskId, timestamp: Date.now() })
+    )
+  } catch { /* localStorage full — ignore */ }
+}
+
 export default function Seedance2CreatePage(): React.JSX.Element {
   const navigate = useNavigate()
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const blobUrlRef = useRef<string | null>(null)
   const lastSessionRef = useRef<string | null>(null)
+  /** Set to true when push event arrives — tells pollTask to stop early */
+  const stoppedRef = useRef(false)
 
   // Storage directories (local UI state, passed to CreateForm)
   const [storageDir, setStorageDir] = useState('')
@@ -154,12 +171,78 @@ export default function Seedance2CreatePage(): React.JSX.Element {
     }
   }, [])
 
-  const pollTask = useCallback(async (taskId: string) => {
-    // Try loading local file first — already downloaded from a previous session
-    const tryLocalFile = async (): Promise<boolean> => {
+  // --- Push-based task status update listener ---
+  // The main process polls ARK API every 5 s and pushes changes here.
+  // When a terminal event arrives, we stop the fallback poll loop immediately.
+  useEffect(() => {
+    const handleUpdate = (data: { taskId: string; status: string; result: unknown }): void => {
+      const currentId = useSeedance2CreateStore.getState().createdId
+      if (data.taskId !== currentId || !currentId) return
+
+      // Update store status
+      useSeedance2CreateStore.getState().update({ taskStatus: data.status })
+
+      // Update localStorage cache
+      updateSessionCache(data.taskId, { status: data.status })
+
+      if (data.status === 'succeeded') {
+        stoppedRef.current = true
+        const result = data.result as TaskDetail | undefined
+        const remoteUrl = result?.content?.video_url
+        if (remoteUrl) {
+          sendNotification(
+            'Seedance 2.0 视频生成完成',
+            `任务 ${data.taskId.slice(0, 20)}… 已成功生成`
+          )
+
+          // Save session immediately before slow download
+          const sessionBase = {
+            taskId: data.taskId, remoteUrl, dir: storageDirRef.current,
+            formParams: (lastMetaRef.current || undefined) as Record<string, unknown> | undefined
+          }
+          localStorage.setItem(
+            STORAGE_LAST_SESSION_KEY,
+            JSON.stringify({ ...sessionBase, localPath: '', status: 'succeeded', timestamp: Date.now() })
+          )
+
+          // Download video and create blob URL
+          downloadAndShowVideo(data.taskId, remoteUrl, sessionBase)
+        }
+      } else if (data.status === 'failed') {
+        stoppedRef.current = true
+        sendNotification(
+          'Seedance 2.0 视频生成失败',
+          `任务 ${data.taskId.slice(0, 20)}… 生成失败，请检查参数后重试`
+        )
+        const result = data.result as { error?: { message?: string } } | undefined
+        const errObj = result?.error
+        useSeedance2CreateStore.getState().update({
+          pollError: errObj?.message ? String(errObj.message) : '视频生成失败'
+        })
+      } else if (data.status === 'cancelled' || data.status === 'expired') {
+        stoppedRef.current = true
+        useSeedance2CreateStore.getState().update({
+          pollError: `任务已${data.status === 'cancelled' ? '取消' : '过期'}`
+        })
+      }
+    }
+
+    window.api.seedance2.onTaskUpdate(handleUpdate)
+    return () => {
+      window.api.seedance2.removeTaskUpdateListener()
+    }
+  }, [])
+
+  /** Download a remote video and turn it into a blob URL for the preview */
+  const downloadAndShowVideo = useCallback(
+    async (
+      taskId: string,
+      remoteUrl: string,
+      sessionBase?: { taskId: string; remoteUrl: string; dir: string; formParams?: Record<string, unknown> | undefined }
+    ): Promise<void> => {
       try {
         const localPath = await window.api.file.downloadVideo({
-          url: '',
+          url: remoteUrl,
           destDir: storageDirRef.current,
           filename: `Seedance2_${taskId}`,
           taskId
@@ -169,91 +252,110 @@ export default function Seedance2CreatePage(): React.JSX.Element {
         if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
         blobUrlRef.current = URL.createObjectURL(blob)
         useSeedance2CreateStore.getState().update({ videoUrl: blobUrlRef.current })
-        return true
+        if (sessionBase) {
+          localStorage.setItem(
+            STORAGE_LAST_SESSION_KEY,
+            JSON.stringify({ ...sessionBase, localPath, status: 'succeeded', timestamp: Date.now() })
+          )
+        }
       } catch {
-        return false
+        // Fall back to remote URL if download fails
+        useSeedance2CreateStore.getState().update({ videoUrl: remoteUrl })
       }
-    }
+    },
+    []
+  )
 
-    // Check local file first
-    if (await tryLocalFile()) {
+  /** Try loading a previously-downloaded local file for the given taskId */
+  const tryLoadLocalVideo = useCallback(async (taskId: string): Promise<boolean> => {
+    try {
+      const localPath = await window.api.file.downloadVideo({
+        url: '',
+        destDir: storageDirRef.current,
+        filename: `Seedance2_${taskId}`,
+        taskId
+      })
+      const buffer = await window.api.file.readFileBuffer(localPath)
+      const blob = new Blob([buffer], { type: 'video/mp4' })
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+      blobUrlRef.current = URL.createObjectURL(blob)
+      useSeedance2CreateStore.getState().update({ videoUrl: blobUrlRef.current })
+      return true
+    } catch {
+      return false
+    }
+  }, [])
+
+  const pollTask = useCallback(async (taskId: string) => {
+    // Try loading local file first — already downloaded from a previous session
+    if (await tryLoadLocalVideo(taskId)) {
       useSeedance2CreateStore.getState().update({ taskStatus: 'succeeded' })
+      // Update cache
+      updateSessionCache(taskId, { status: 'succeeded' })
       return
     }
 
     // No local file — poll API every 5s for up to 5 minutes
     const MAX_RETRIES = 60
-    let stopped = false
     let succeededWithoutUrl = false
 
-    for (let retry = 0; retry < MAX_RETRIES && !stopped; retry++) {
+    // Reset the stopped flag before starting (in case of re-poll)
+    stoppedRef.current = false
+
+    for (let retry = 0; retry < MAX_RETRIES && !stoppedRef.current; retry++) {
       await new Promise((r) => setTimeout(r, 5000))
+      if (stoppedRef.current) break
       try {
         const result = await window.api.seedance2.getTask(taskId) as TaskDetail
         const status = result.status || ''
         useSeedance2CreateStore.getState().update({ taskStatus: status })
+        // Update localStorage cache
+        updateSessionCache(taskId, { status })
 
         if (status === 'succeeded') {
           const remoteUrl = result.content?.video_url
           if (remoteUrl) {
-            stopped = true
+            stoppedRef.current = true
             sendNotification('Seedance 2.0 视频生成完成', `任务 ${taskId.slice(0, 20)}… 已成功生成`)
 
-            // Save session data immediately (before slow download), including form params for restore
-            const sessionBase = { taskId, remoteUrl, dir: storageDirRef.current, formParams: lastMetaRef.current || undefined }
+            // Save session data immediately (before slow download)
+            const sessionBase = {
+              taskId, remoteUrl, dir: storageDirRef.current,
+              formParams: (lastMetaRef.current || undefined) as Record<string, unknown> | undefined
+            }
             localStorage.setItem(
               STORAGE_LAST_SESSION_KEY,
-              JSON.stringify({ ...sessionBase, localPath: '' })
+              JSON.stringify({ ...sessionBase, localPath: '', status: 'succeeded', timestamp: Date.now() })
             )
 
-            // Try to download first → show local blob URL
-            try {
-              const localPath = await window.api.file.downloadVideo({
-                url: remoteUrl,
-                destDir: storageDirRef.current,
-                filename: `Seedance2_${taskId}`,
-                taskId
-              })
-              const buffer = await window.api.file.readFileBuffer(localPath)
-              const blob = new Blob([buffer], { type: 'video/mp4' })
-              if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-              blobUrlRef.current = URL.createObjectURL(blob)
-              useSeedance2CreateStore.getState().update({ videoUrl: blobUrlRef.current })
-              // Update localStorage with local path once download completes
-              localStorage.setItem(
-                STORAGE_LAST_SESSION_KEY,
-                JSON.stringify({ ...sessionBase, localPath })
-              )
-            } catch {
-              // Fall back to remote URL if download fails
-              useSeedance2CreateStore.getState().update({ videoUrl: remoteUrl })
-            }
+            // Download video and show it
+            await downloadAndShowVideo(taskId, remoteUrl, sessionBase)
           } else {
             // Status is 'succeeded' but no video URL yet — continue polling
             succeededWithoutUrl = true
           }
         } else if (status === 'failed') {
-          stopped = true
+          stoppedRef.current = true
           sendNotification('Seedance 2.0 视频生成失败', `任务 ${taskId.slice(0, 20)}… 生成失败，请检查参数后重试`)
-          const errObj = result.error
+          const errObj = result.error as { message?: string } | undefined
           useSeedance2CreateStore.getState().update({
             pollError: errObj?.message ? String(errObj.message) : '视频生成失败'
           })
         } else if (status === 'cancelled' || status === 'expired') {
-          stopped = true
+          stoppedRef.current = true
           useSeedance2CreateStore.getState().update({
             pollError: `任务已${status === 'cancelled' ? '取消' : '过期'}`
           })
         }
       } catch {
         if (retry >= MAX_RETRIES - 1) {
-          stopped = true
+          stoppedRef.current = true
           useSeedance2CreateStore.getState().update({ pollError: '查询任务状态失败，请检查网络后重试' })
         }
       }
     }
 
-    if (!stopped) {
+    if (!stoppedRef.current) {
       if (succeededWithoutUrl) {
         useSeedance2CreateStore.getState().update({
           pollError: '视频已生成但获取播放地址超时，请到任务列表中查看'
@@ -264,7 +366,7 @@ export default function Seedance2CreatePage(): React.JSX.Element {
         })
       }
     }
-  }, [])
+  }, [tryLoadLocalVideo, downloadAndShowVideo])
 
   const handleSubmit = useCallback(async (apiParams: Record<string, unknown>, meta: CreateFormMeta) => {
     lastMetaRef.current = meta
@@ -272,11 +374,30 @@ export default function Seedance2CreatePage(): React.JSX.Element {
     const result = await window.api.seedance2.createTask(apiParams) as { id: string }
     const id = result.id
 
+    // Reset stopped flag for new task
+    stoppedRef.current = false
+
     useSeedance2CreateStore.getState().update({
       createdId: id,
       taskStatus: 'queued',
       videoUrl: '',
       pollError: ''
+    })
+
+    // --- Save comprehensive cache to localStorage immediately ---
+    updateSessionCache(id, {
+      status: 'queued',
+      remoteUrl: '',
+      localPath: '',
+      dir: storageDirRef.current,
+      formParams: meta,
+      storageDir: storageDirRef.current,
+      prompt: meta.prompt,
+      ratio: meta.ratio,
+      duration: meta.duration,
+      resolution: meta.resolution,
+      genMode: meta.generationMode,
+      model: meta.model
     })
 
     // Save task params (best-effort) — use ref for fresh storageDir

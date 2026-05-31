@@ -6,6 +6,70 @@ import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { initDatabase, insertLog, queryLogs, queryLogById, queryLogByTaskId, insertTaskParams, getTaskParamsByTaskId } from './database'
 
+/**
+ * In-process task monitor — polls ARK API on an interval in the main process
+ * and pushes status changes to the renderer via IPC events.
+ * The renderer listens on seedance:task-update / seedance2:task-update.
+ */
+interface TaskMonitor {
+  interval: ReturnType<typeof setInterval>
+  webContents: Electron.WebContents
+}
+
+const taskMonitors = new Map<string, TaskMonitor>()
+
+function startTaskMonitor(
+  taskId: string,
+  version: '1.5' | '2.0',
+  webContents: Electron.WebContents
+): void {
+  if (taskMonitors.has(taskId)) return // already monitoring
+
+  const channel = version === '2.0' ? 'seedance2:task-update' : 'seedance:task-update'
+  const apiKey = getApiKey(version)
+
+  const interval = setInterval(async () => {
+    try {
+      const result = (await arkFetch(
+        `/contents/generations/tasks/${encodeURIComponent(taskId)}`,
+        apiKey
+      )) as Record<string, unknown>
+
+      const status = String(result.status || '')
+
+      // Push status update to renderer (only if the window still exists)
+      if (!webContents.isDestroyed()) {
+        webContents.send(channel, {
+          taskId,
+          status,
+          result
+        })
+      }
+
+      // Terminal state → stop monitoring
+      if (['succeeded', 'failed', 'cancelled', 'expired'].includes(status)) {
+        const monitor = taskMonitors.get(taskId)
+        if (monitor) {
+          clearInterval(monitor.interval)
+          taskMonitors.delete(taskId)
+        }
+      }
+    } catch {
+      // Monitor errors are swallowed — the next tick will retry.
+      // If the window is gone, clean up.
+      if (webContents.isDestroyed()) {
+        const monitor = taskMonitors.get(taskId)
+        if (monitor) {
+          clearInterval(monitor.interval)
+          taskMonitors.delete(taskId)
+        }
+      }
+    }
+  }, 5000)
+
+  taskMonitors.set(taskId, { interval, webContents })
+}
+
 const ARK_API_BASE = 'https://ark.cn-beijing.volces.com/api/v3'
 
 const SETTINGS_PATH = join(app.getPath('userData'), 'settings.json')
@@ -174,7 +238,7 @@ app.whenReady().then(() => {
   })
 
   // --- Seedance 1.5 IPC handlers ---
-  ipcMain.handle('seedance:create-task', async (_event, params) => {
+  ipcMain.handle('seedance:create-task', async (event, params) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
       throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
@@ -185,7 +249,9 @@ app.whenReady().then(() => {
         method: 'POST',
         body: JSON.stringify(params)
       })
-      insertLog({ version: '1.5', task_id: (result as Record<string, unknown>)?.id as string || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      const taskId = (result as Record<string, unknown>)?.id as string | undefined
+      insertLog({ version: '1.5', task_id: taskId || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      if (taskId) startTaskMonitor(taskId, '1.5', event.sender)
       return result
     } catch (err) {
       insertLog({ version: '1.5', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
@@ -345,7 +411,7 @@ app.whenReady().then(() => {
   })
 
   // --- Seedance 2.0 IPC handlers ---
-  ipcMain.handle('seedance2:create-task', async (_event, params) => {
+  ipcMain.handle('seedance2:create-task', async (event, params) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
       throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
@@ -356,7 +422,9 @@ app.whenReady().then(() => {
         method: 'POST',
         body: JSON.stringify(params)
       })
-      insertLog({ version: '2.0', task_id: (result as Record<string, unknown>)?.id as string || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      const taskId = (result as Record<string, unknown>)?.id as string | undefined
+      insertLog({ version: '2.0', task_id: taskId || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      if (taskId) startTaskMonitor(taskId, '2.0', event.sender)
       return result
     } catch (err) {
       insertLog({ version: '2.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })

@@ -7,13 +7,29 @@ const api = {
     createTask: (params) => ipcRenderer.invoke('seedance:create-task', params),
     getTask: (id) => ipcRenderer.invoke('seedance:get-task', id),
     listTasks: (query) => ipcRenderer.invoke('seedance:list-tasks', query),
-    deleteTask: (id) => ipcRenderer.invoke('seedance:delete-task', id)
+    deleteTask: (id) => ipcRenderer.invoke('seedance:delete-task', id),
+    /** Listen for push-based task status updates from the main process */
+    onTaskUpdate: (callback) => {
+      ipcRenderer.on('seedance:task-update', (_event, data) => callback(data))
+    },
+    /** Remove all task-update listeners */
+    removeTaskUpdateListener: () => {
+      ipcRenderer.removeAllListeners('seedance:task-update')
+    }
   },
   seedance2: {
     createTask: (params) => ipcRenderer.invoke('seedance2:create-task', params),
     getTask: (id) => ipcRenderer.invoke('seedance2:get-task', id),
     listTasks: (query) => ipcRenderer.invoke('seedance2:list-tasks', query),
-    deleteTask: (id) => ipcRenderer.invoke('seedance2:delete-task', id)
+    deleteTask: (id) => ipcRenderer.invoke('seedance2:delete-task', id),
+    /** Listen for push-based task status updates from the main process */
+    onTaskUpdate: (callback) => {
+      ipcRenderer.on('seedance2:task-update', (_event, data) => callback(data))
+    },
+    /** Remove all task-update listeners */
+    removeTaskUpdateListener: () => {
+      ipcRenderer.removeAllListeners('seedance2:task-update')
+    }
   },
   seedream: {
     generateImage: (params) => ipcRenderer.invoke('seedream:generate-image', params)

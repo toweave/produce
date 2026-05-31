@@ -5,6 +5,10 @@ interface SeedanceAPI {
   getTask: (id: string) => Promise<unknown>
   listTasks: (query: string) => Promise<unknown>
   deleteTask: (id: string) => Promise<unknown>
+  /** Listen for push-based task status updates from the main process */
+  onTaskUpdate: (callback: (data: { taskId: string; status: string; result: unknown }) => void) => void
+  /** Remove all task-update listeners */
+  removeTaskUpdateListener: () => void
 }
 
 interface SeedreamAPI {
