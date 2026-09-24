@@ -1,0 +1,57 @@
+{
+  "expectations": [
+    {
+      "evidence": "Found dedicated store file at video-player-store.ts. It uses `create` from 'zustand', defines `VideoPlayerState` interface with all playback/UI state and actions, and exports `useVideoPlayerStore`.",
+      "passed": true,
+      "text": "创建了专门的 zustand store 文件（如 stores/player-store.ts）"
+    },
+    {
+      "evidence": "VideoPlayerProps defines exactly 3 props: `videoUrl` (string), `videoRef` (RefObject), and `callbacks` (VideoPlayerCallbacks, optional). The component accepts only these 3 props, which is well under the 5-prop limit.",
+      "passed": true,
+      "text": "VideoPlayer 组件 props 数量不超过 5 个"
+    },
+    {
+      "evidence": "Every state subscription in VideoPlayer uses single-field selector pattern, e.g.: `useVideoPlayerStore((s) => s.isPlaying)`, `useVideoPlayerStore((s) => s.currentTime)`, `useVideoPlayerStore((s) => s.volume)`, `useVideoPlayerStore((s) => s.muted)`, `useVideoPlayerStore((s) => s.playbackRate)`, `useVideoPlayerStore((s) => s.capturing)`, `useVideoPlayerStore((s) => s.play)`, `useVideoPlayerStore((s) => s.pause)`, `useVideoPlayerStore((s) => s.togglePlay)`, etc. The `selectError` helper selector is also used for the related error fields.",
+      "passed": true,
+      "text": "组件从 store 读取状态使用单个字段选择器模式（如 useStore(s => s.videoUrl)）"
+    },
+    {
+      "evidence": "Actions in the store combine state mutation with side effects: `play()` sets `isPlaying: true` and invokes `_callbacks.onPlay?.()`; `pause()` sets `isPlaying: false` and invokes `_callbacks.onPause?.()`; `togglePlay()` reads current state and delegates to play/pause; `setCurrentTime(time)` sets time and invokes `_callbacks.onTimeUpdate?.(time)`; `setPlaybackRate(rate)` sets rate and invokes `_callbacks.onRateChange?.(rate)`.",
+      "passed": true,
+      "text": "播放控制方法在 store 中作为 compound action 实现"
+    },
+    {
+      "evidence": "Line 74 of video-player.tsx: `export function VideoPlayer({ videoUrl, videoRef, callbacks }: VideoPlayerProps)` uses function declaration syntax (not arrow function or class component).",
+      "passed": true,
+      "text": "使用了函数式组件声明：export function VideoPlayer()"
+    },
+    {
+      "evidence": "All notification callbacks (onPlay, onPause, onTimeUpdate, onRateChange, onCaptureFrame) are combined into a single `callbacks` prop of type `VideoPlayerCallbacks`. In usage-example.tsx, the parent passes `callbacks={{ onCaptureFrame: ... }}` as an object rather than spreading individual callback props.",
+      "passed": true,
+      "text": "相关的 props 组合成对象传递而非扁平展开"
+    }
+  ],
+  "summary": {
+    "passed": 6,
+    "failed": 0,
+    "total": 6,
+    "pass_rate": 1
+  },
+  "claims": [
+    {
+      "claim": "Refactored from 15 props to 3 props",
+      "source": "video-player.tsx (comment lines 6-13)",
+      "verification": "VERIFIED. Code comments list the original 15 props and show the new interface has exactly 3 props: videoUrl, videoRef, callbacks."
+    },
+    {
+      "claim": "Internal state (isPlaying, currentTime, volume, muted, playbackRate, capturing, hasError, errorMessage) is managed via zustand store",
+      "source": "video-player.tsx (comment lines 16-18)",
+      "verification": "VERIFIED. All listed state fields are defined in the store's initial state and managed through store actions. The component subscribes to them via useVideoPlayerStore selectors."
+    },
+    {
+      "claim": "Parent can imperatively read/write state via the store using getState()",
+      "source": "usage-example.tsx (comment lines 39-42 and code lines 56-57)",
+      "verification": "VERIFIED. The usage example shows `const { pause, setVolume } = useVideoPlayerStore.getState()` for imperative access, and demonstrates reading `currentTime` and `isPlaying` via selectors."
+    }
+  ]
+}

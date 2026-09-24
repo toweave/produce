@@ -1,10 +1,74 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
-import { join } from 'path'
-import { readFile, writeFile, mkdir, unlink } from 'fs/promises'
+import { join, relative, resolve } from 'path'
+import { readFile, writeFile, mkdir, unlink, access, readdir } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
-import { initDatabase, insertLog, queryLogs } from './database'
+import { initDatabase, insertLog, queryLogs, queryLogById, queryLogByTaskId, insertTaskParams, getTaskParamsByTaskId } from './database'
+
+/**
+ * In-process task monitor — polls ARK API on an interval in the main process
+ * and pushes status changes to the renderer via IPC events.
+ * The renderer listens on seedance:task-update / seedance2:task-update.
+ */
+interface TaskMonitor {
+  interval: ReturnType<typeof setInterval>
+  webContents: Electron.WebContents
+}
+
+const taskMonitors = new Map<string, TaskMonitor>()
+
+function startTaskMonitor(
+  taskId: string,
+  version: '1.5' | '2.0',
+  webContents: Electron.WebContents
+): void {
+  if (taskMonitors.has(taskId)) return // already monitoring
+
+  const channel = version === '2.0' ? 'seedance2:task-update' : 'seedance:task-update'
+  const apiKey = getApiKey(version)
+
+  const interval = setInterval(async () => {
+    try {
+      const result = (await arkFetch(
+        `/contents/generations/tasks/${encodeURIComponent(taskId)}`,
+        apiKey
+      )) as Record<string, unknown>
+
+      const status = String(result.status || '')
+
+      // Push status update to renderer (only if the window still exists)
+      if (!webContents.isDestroyed()) {
+        webContents.send(channel, {
+          taskId,
+          status,
+          result
+        })
+      }
+
+      // Terminal state → stop monitoring
+      if (['succeeded', 'failed', 'cancelled', 'expired'].includes(status)) {
+        const monitor = taskMonitors.get(taskId)
+        if (monitor) {
+          clearInterval(monitor.interval)
+          taskMonitors.delete(taskId)
+        }
+      }
+    } catch {
+      // Monitor errors are swallowed — the next tick will retry.
+      // If the window is gone, clean up.
+      if (webContents.isDestroyed()) {
+        const monitor = taskMonitors.get(taskId)
+        if (monitor) {
+          clearInterval(monitor.interval)
+          taskMonitors.delete(taskId)
+        }
+      }
+    }
+  }, 5000)
+
+  taskMonitors.set(taskId, { interval, webContents })
+}
 
 const ARK_API_BASE = 'https://ark.cn-beijing.volces.com/api/v3'
 
@@ -13,6 +77,7 @@ const SETTINGS_PATH = join(app.getPath('userData'), 'settings.json')
 const DEFAULT_SETTINGS = {
   seedance15Key: process.env['VITE_SEE_DANCE_15_KEY'] || process.env['VITE_SEE_DANCE_API_KEY'] || '',
   seedance20Key: process.env['VITE_SEE_DANCE_20_KEY'] || process.env['VITE_SEE_DANCE_API_KEY'] || '',
+  seedream50Key: process.env['VITE_SEE_DREAM_50_KEY'] || '',
   userInfo: { name: '用户', email: 'user@example.com' },
   theme: 'system'
 }
@@ -39,9 +104,10 @@ async function saveSettings(partial: Partial<Settings>): Promise<Settings> {
   return cachedSettings
 }
 
-function getApiKey(version: '1.5' | '2.0'): string {
+function getApiKey(version: '1.5' | '2.0' | '5.0'): string {
   if (version === '1.5') return cachedSettings.seedance15Key
-  return cachedSettings.seedance20Key
+  if (version === '2.0') return cachedSettings.seedance20Key
+  return cachedSettings.seedream50Key
 }
 
 const MIME_MAP: Record<string, string> = {
@@ -150,11 +216,32 @@ app.whenReady().then(() => {
     return saveSettings(partial)
   })
 
+  // --- Seedream 5.0 IPC handlers ---
+  ipcMain.handle('seedream:generate-image', async (_event, params) => {
+    const apiKey = getApiKey('5.0')
+    if (!apiKey) {
+      throw new Error('Seedream-5.0 API key is not configured. Please go to Settings > Keys to set it up.')
+    }
+    const prompt = String((params as Record<string, unknown>).prompt || '').slice(0, 200)
+    const imageCount = Array.isArray((params as Record<string, unknown>).image) ? ((params as Record<string, unknown>).image as unknown[]).length : (params as Record<string, unknown>).image ? 1 : 0
+    try {
+      const result = await arkFetch('/images/generations', apiKey, {
+        method: 'POST',
+        body: JSON.stringify(params)
+      })
+      insertLog({ version: '5.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt, status: 'succeeded', image_count: imageCount, video_count: 0, audio_count: 0, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      return result
+    } catch (err) {
+      insertLog({ version: '5.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt, status: 'failed', image_count: imageCount, video_count: 0, audio_count: 0, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
+      throw err
+    }
+  })
+
   // --- Seedance 1.5 IPC handlers ---
-  ipcMain.handle('seedance:create-task', async (_event, params) => {
+  ipcMain.handle('seedance:create-task', async (event, params) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     const info = extractContentInfo(params as Record<string, unknown>)
     try {
@@ -162,7 +249,9 @@ app.whenReady().then(() => {
         method: 'POST',
         body: JSON.stringify(params)
       })
-      insertLog({ version: '1.5', task_id: (result as Record<string, unknown>)?.id as string || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      const taskId = (result as Record<string, unknown>)?.id as string | undefined
+      insertLog({ version: '1.5', task_id: taskId || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      if (taskId) startTaskMonitor(taskId, '1.5', event.sender)
       return result
     } catch (err) {
       insertLog({ version: '1.5', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
@@ -173,7 +262,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:get-task', async (_event, id: string) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey)
@@ -188,7 +277,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:list-tasks', async (_event, query: string) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks${query}`, apiKey)
@@ -203,7 +292,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance:delete-task', async (_event, id: string) => {
     const apiKey = getApiKey('1.5')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-1.5 的 API 密钥')
+      throw new Error('Seedance-1.5 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey, {
@@ -250,10 +339,24 @@ app.whenReady().then(() => {
     return app.getPath('downloads')
   })
 
-  ipcMain.handle('file:download-video', async (_event, { url, destDir, filename }: { url: string; destDir: string; filename: string }) => {
-    await mkdir(destDir, { recursive: true })
+  ipcMain.handle('file:download-video', async (_event, { url, destDir, filename, taskId }: { url: string; destDir: string; filename: string; taskId?: string }) => {
+    const dir = destDir || app.getPath('downloads')
+    await mkdir(dir, { recursive: true })
+
+    // If taskId is provided, use a deterministic filename so re-downloads reuse the same file
+    const actualFilename = (taskId ? `Seedance2_${taskId}` : filename)
     const ext = '.mp4'
-    const destPath = join(destDir, `${filename}${ext}`)
+    const destPath = join(dir, `${actualFilename}${ext}`)
+
+    // Skip download if file already exists (same taskId = same video)
+    try {
+      await access(destPath)
+      return destPath
+    } catch { /* file doesn't exist, continue to download */ }
+
+    // Guard: skip fetch when no URL provided (caller just wanted to check file existence)
+    if (!url) throw new Error('文件未找到')
+
     const response = await fetch(url)
     if (!response.ok) throw new Error(`下载视频失败: ${response.status}`)
     const buffer = Buffer.from(await response.arrayBuffer())
@@ -262,11 +365,12 @@ app.whenReady().then(() => {
   })
 
   ipcMain.handle('file:save-keyframe', async (_event, { base64Data, destDir, filename }: { base64Data: string; destDir: string; filename: string }) => {
-    await mkdir(destDir, { recursive: true })
+    const dir = destDir || app.getPath('downloads')
+    await mkdir(dir, { recursive: true })
     const matches = base64Data.match(/^data:image\/(\w+);base64,(.+)$/)
     if (!matches) throw new Error('无效的 Base64 图片数据: ' + (base64Data ? base64Data.substring(0, 50) : '空字符串'))
     const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1]
-    const destPath = join(destDir, `${filename}.${ext}`)
+    const destPath = join(dir, `${filename}.${ext}`)
     const buffer = Buffer.from(matches[2], 'base64')
     await writeFile(destPath, buffer)
     return destPath
@@ -281,10 +385,11 @@ app.whenReady().then(() => {
     return buffer
   })
 
-  ipcMain.handle('file:read-keyframes', async (_event, { dir, taskId }: { dir: string; taskId: string }) => {
+  ipcMain.handle('file:read-keyframes', async (_event, { dir, taskId, prefix }: { dir: string; taskId: string; prefix?: string }) => {
+    const filePrefix = prefix || 'Seedance_'
     const autoFrames: (string | null)[] = []
     for (let i = 0; i < 6; i++) {
-      const path = join(dir, `Seedance_${taskId}_keyframe_${i}.png`)
+      const path = join(dir, `${filePrefix}${taskId}_keyframe_${i}.png`)
       try {
         const buffer = await readFile(path)
         autoFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
@@ -292,24 +397,38 @@ app.whenReady().then(() => {
         autoFrames.push(null)
       }
     }
+    // Manual keyframes are written as `..._manual_<index>` by the create page and
+    // as `..._manual_<timestamp>` by the preview/detail player. Scan the directory
+    // and order by the numeric suffix, so neither naming scheme — nor an index
+    // removed by a delete — hides the remaining frames.
     const manualFrames: string[] = []
-    for (let i = 0; ; i++) {
-      const path = join(dir, `Seedance_${taskId}_manual_${i}.png`)
-      try {
-        const buffer = await readFile(path)
-        manualFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
-      } catch {
-        break
+    const manualPrefix = `${filePrefix}${taskId}_manual_`
+    try {
+      const entries = await readdir(dir)
+      const ordered = entries
+        .filter((name) => name.startsWith(manualPrefix) && name.endsWith('.png'))
+        .map((name) => ({ name, order: Number(name.slice(manualPrefix.length, -4)) }))
+        .filter((entry) => Number.isFinite(entry.order))
+        .sort((a, b) => a.order - b.order)
+      for (const entry of ordered) {
+        try {
+          const buffer = await readFile(join(dir, entry.name))
+          manualFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
+        } catch {
+          // Unreadable file — skip it rather than dropping the rest
+        }
       }
+    } catch {
+      // Directory does not exist yet — no manual keyframes
     }
     return { autoFrames, manualFrames }
   })
 
   // --- Seedance 2.0 IPC handlers ---
-  ipcMain.handle('seedance2:create-task', async (_event, params) => {
+  ipcMain.handle('seedance2:create-task', async (event, params) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     const info = extractContentInfo(params as Record<string, unknown>)
     try {
@@ -317,7 +436,9 @@ app.whenReady().then(() => {
         method: 'POST',
         body: JSON.stringify(params)
       })
-      insertLog({ version: '2.0', task_id: (result as Record<string, unknown>)?.id as string || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      const taskId = (result as Record<string, unknown>)?.id as string | undefined
+      insertLog({ version: '2.0', task_id: taskId || null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: JSON.stringify(result), error: null })
+      if (taskId) startTaskMonitor(taskId, '2.0', event.sender)
       return result
     } catch (err) {
       insertLog({ version: '2.0', task_id: null, operation: 'create', model: String((params as Record<string, unknown>).model || ''), prompt: info.prompt, status: null, image_count: info.imageCount, video_count: info.videoCount, audio_count: info.audioCount, params: JSON.stringify(params), result: null, error: err instanceof Error ? err.message : String(err) })
@@ -328,7 +449,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:get-task', async (_event, id: string) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey)
@@ -343,7 +464,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:list-tasks', async (_event, query: string) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks${query}`, apiKey)
@@ -358,7 +479,7 @@ app.whenReady().then(() => {
   ipcMain.handle('seedance2:delete-task', async (_event, id: string) => {
     const apiKey = getApiKey('2.0')
     if (!apiKey) {
-      throw new Error('请先在设置页面配置 Seedance-2.0 的 API 密钥')
+      throw new Error('Seedance-2.0 API key is not configured. Please go to Settings > Keys to set it up.')
     }
     try {
       const result = await arkFetch(`/contents/generations/tasks/${encodeURIComponent(id)}`, apiKey, {
@@ -375,6 +496,42 @@ app.whenReady().then(() => {
   // --- Logs query IPC handler ---
   ipcMain.handle('logs:query', async (_event, options) => {
     return queryLogs(options)
+  })
+
+  ipcMain.handle('logs:get-by-id', async (_event, id: number) => {
+    return queryLogById(id)
+  })
+
+  ipcMain.handle('logs:get-task-log', async (_event, taskId: string) => {
+    return queryLogByTaskId(taskId)
+  })
+
+  // --- Path utility IPC handler ---
+  ipcMain.handle('path:relative', async (_event, from: string, to: string) => {
+    return relative(from, to)
+  })
+
+  // --- Task params IPC handlers ---
+  ipcMain.handle('task-params:save', async (_event, entry) => {
+    insertTaskParams(entry)
+  })
+
+  ipcMain.handle('task-params:get-by-task-id', async (_event, taskId: string) => {
+    return getTaskParamsByTaskId(taskId)
+  })
+
+  // --- Resolve image path: storageDir + relativePath -> read file -> return base64 ---
+  ipcMain.handle('file:resolve-image-path', async (_event, { storageDir, relativePath }: { storageDir: string; relativePath: string }) => {
+    const absolutePath = resolve(storageDir, relativePath)
+    try {
+      await access(absolutePath)
+    } catch {
+      return null
+    }
+    const buffer = await readFile(absolutePath)
+    const ext = absolutePath.split('.').pop()?.toLowerCase() || 'png'
+    const mime = MIME_MAP[ext] || `image/${ext}`
+    return `data:${mime};base64,${buffer.toString('base64')}`
   })
 
   app.on('activate', function () {

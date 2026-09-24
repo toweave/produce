@@ -1,0 +1,76 @@
+{
+  "expectations": [
+    {
+      "evidence": "stores/profile-store.ts 已创建，使用 zustand 的 create() 管理表单状态字段（username, email, gender, avatarData, saving）及 actions（setUsername, setEmail, setGender, setAvatarData, setSaving, saveProfile, resetForm）。",
+      "passed": true,
+      "text": "创建了 zustand store 管理表单状态（如 stores/profile-store.ts）"
+    },
+    {
+      "evidence": "pages/profile.tsx 导入了 @/components/ui/button 的 Button、@/components/ui/input 的 Input、@/components/ui/select 的 Select/SelectContent/SelectItem/SelectTrigger/SelectValue 等 shadcn 组件。",
+      "passed": true,
+      "text": "使用了 shadcn 的 Input, Select, Button 等组件"
+    },
+    {
+      "evidence": "ProfilePage 组件签名是 `export default function ProfilePage(): React.JSX.Element`，不接收任何 props。所有数据通过 zustand store 选择器读取。",
+      "passed": true,
+      "text": "组件 props 数量不超过 10 个"
+    },
+    {
+      "evidence": "pages/profile.tsx 中未使用 cn() 函数。所有 className 属性均为简单字符串，未展示类名合并用法。底层 shadcn 组件内部使用了 cn()，但学生代码未直接使用。",
+      "passed": false,
+      "text": "使用 cn() 函数合并 Tailwind 类名"
+    },
+    {
+      "evidence": "所有样式均通过 Tailwind utility 类实现（如 p-6, w-full, max-w-2xl, mx-auto, flex, gap-2, size-4, text-xs/relaxed 等）。未创建任何自定义 CSS 文件。",
+      "passed": true,
+      "text": "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件"
+    },
+    {
+      "evidence": "代码中使用了 text-muted-foreground（第71,85行）、border-border（第161行）、bg-primary、text-primary-foreground、bg-background、ring-background（第77行）等语义化颜色名称。",
+      "passed": true,
+      "text": "使用了语义化颜色名称（如 bg-card, text-muted-foreground, border-border）"
+    },
+    {
+      "evidence": "从 lucide-react 导入了 UserIcon, UploadIcon, CameraIcon（第3行），并在 JSX 中使用。sidebar 补丁还添加了 SettingsIcon 导入。",
+      "passed": true,
+      "text": "使用了 lucide-react 图标"
+    },
+    {
+      "evidence": "ProfilePage 组件无 props，所有字段值通过 useProfileStore 选择器读取，更新通过 store actions 完成：setUsername(e.target.value)、setEmail(e.target.value)、setGender(val)。",
+      "passed": true,
+      "text": "表单字段值通过 store action 更新而非 props 回调"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 1,
+    "total": 8,
+    "pass_rate": 0.875
+  },
+  "claims": [
+    {
+      "claim": "表单功能完整，包含头像上传、用户名、邮箱、性别字段",
+      "evidence": "pages/profile.tsx 实现了完整的表单 UI，包含 Avatar 上传区域（使用 FileReader 转为 data URL）、用户名 Input、邮箱 Input、性别 Select 下拉框。"
+    },
+    {
+      "claim": "表单数据通过模拟 API 保存到 localStorage",
+      "evidence": "profile-store.ts 的 saveProfile action 使用 setTimeout 模拟 800ms API 延迟，然后将数据序列化为 JSON 保存到 localStorage.setItem('profile', ...)。"
+    },
+    {
+      "claim": "保存成功后使用 toast 通知",
+      "evidence": "pages/profile.tsx 第45行在保存完成后调用 toast.success('Profile saved successfully')。"
+    },
+    {
+      "claim": "Profile 页面位于 /profile 路由",
+      "evidence": "patches/app.tsx.patch 在路由表中添加了 <Route path=\"/profile\" element={<ProfilePage />} />。"
+    },
+    {
+      "claim": "Profile 页面在侧边导航栏中有入口",
+      "evidence": "patches/app-sidebar.tsx.patch 在导航数据中添加了 title: 'Profile', url: '/profile' 并使用 SettingsIcon 作为图标。"
+    },
+    {
+      "claim": "使用单个字段选择器优化渲染性能",
+      "evidence": "pages/profile.tsx 第18-22行使用单个选择器调用 useProfileStore((s) => s.xxx) 而非解构整个 state，以最小化重渲染。"
+    }
+  ]
+}
