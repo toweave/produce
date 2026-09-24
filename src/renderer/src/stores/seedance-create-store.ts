@@ -63,6 +63,7 @@ interface SeedanceCreateState {
 
   // Compound actions
   clearImage: () => void
+  clearLastFrame: () => void
   selectImage: () => Promise<void>
   selectLastFrame: () => Promise<void>
   handleStorageChange: (val: string) => Promise<void>
@@ -108,6 +109,7 @@ export const useSeedanceCreateStore = create<SeedanceCreateState>()((set, get) =
 
   // Compound actions
   clearImage: () => set({ imageData: null, firstFramePath: '' }),
+  clearLastFrame: () => set({ lastFrameData: null, lastFramePath: '' }),
 
   selectImage: async () => {
     const filePath = await window.api.dialog.openFile()

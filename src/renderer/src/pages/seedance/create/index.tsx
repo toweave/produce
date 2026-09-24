@@ -3,42 +3,145 @@ import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import { CreateForm } from './components/create-form'
 import { KeyframeGrid } from './components/keyframe-grid'
-import { VideoPlayer } from '../components/video-player'
+import VideoPlayer from '@/components/video-player'
 import { useSeedanceCreateStore } from '@/stores/seedance-create-store'
 import { useFormPersistence, useStorageInit } from './hooks/use-form-persistence'
 import { useSessionRestore } from './hooks/use-session-restore'
-import { useAutoCapture } from './hooks/use-auto-capture'
 
 const STORAGE_LAST_SESSION_KEY = 'seedance-last-session'
+
+/** Save/update the last-session cache to localStorage */
+function updateSessionCache(taskId: string, overrides: Record<string, unknown>): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_LAST_SESSION_KEY)
+    const existing = raw ? JSON.parse(raw) : {}
+    localStorage.setItem(
+      STORAGE_LAST_SESSION_KEY,
+      JSON.stringify({ ...existing, ...overrides, taskId, timestamp: Date.now() })
+    )
+  } catch { /* localStorage full — ignore */ }
+}
 
 export default function SeedanceCreatePage(): React.JSX.Element {
   // DOM refs
   const videoRef = useRef<HTMLVideoElement | null>(null)
-  const justCreated = useRef(false)
   const blobUrlRef = useRef<string | null>(null)
-  // Cancellation token for the in-flight poll loop (see pollTask)
+  /**
+   * Cancellation token for the in-flight poll loop. A fresh token is created per
+   * run, so two runs never share state, and a push event or unmount can stop the
+   * current run without affecting any other.
+   */
   const pollTokenRef = useRef<{ cancelled: boolean } | null>(null)
 
   // Store selectors
   const currentDir = useSeedanceCreateStore((s) => s.currentDir)
+  const videoUrl = useSeedanceCreateStore((s) => s.videoUrl)
+  const pollError = useSeedanceCreateStore((s) => s.pollError)
+  const createdId = useSeedanceCreateStore((s) => s.createdId)
+  const taskStatus = useSeedanceCreateStore((s) => s.taskStatus)
 
   // Hooks
   useFormPersistence()
   useStorageInit()
   useSessionRestore(currentDir)
-  useAutoCapture({ videoRef, justCreated })
+
+  /** Stop the in-flight poll loop, if any */
+  const stopPolling = useCallback((): void => {
+    if (pollTokenRef.current) pollTokenRef.current.cancelled = true
+  }, [])
 
   // Stop polling and release the blob URL on unmount
   useEffect(() => {
     return () => {
-      if (pollTokenRef.current) pollTokenRef.current.cancelled = true
+      stopPolling()
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     }
-  }, [])
+  }, [stopPolling])
+
+  // --- Push-based task status update listener ---
+  useEffect(() => {
+    const handleUpdate = (data: { taskId: string; status: string; result: unknown }): void => {
+      const currentId = useSeedanceCreateStore.getState().createdId
+      if (data.taskId !== currentId || !currentId) return
+
+      useSeedanceCreateStore.getState().update({ taskStatus: data.status })
+      updateSessionCache(data.taskId, { status: data.status })
+
+      if (data.status === 'succeeded') {
+        stopPolling()
+        const result = data.result as Record<string, unknown> | undefined
+        const content = result?.content as Record<string, unknown> | undefined
+        const remoteUrl = String(content?.video_url || '')
+
+        if (remoteUrl) {
+          const { currentDir } = useSeedanceCreateStore.getState()
+
+          // Save session immediately before slow download
+          const sessionBase = { taskId: data.taskId, remoteUrl, dir: currentDir }
+          localStorage.setItem(
+            STORAGE_LAST_SESSION_KEY,
+            JSON.stringify({ ...sessionBase, localPath: '', status: 'succeeded', timestamp: Date.now() })
+          )
+
+          downloadAndShowVideo(data.taskId, remoteUrl, sessionBase, currentDir)
+        }
+      } else if (data.status === 'failed') {
+        stopPolling()
+        const result = data.result as { error?: { message?: string } } | undefined
+        const errObj = result?.error
+        useSeedanceCreateStore.getState().update({
+          pollError: errObj?.message ? String(errObj.message) : '视频生成失败'
+        })
+      } else if (data.status === 'cancelled' || data.status === 'expired') {
+        stopPolling()
+        useSeedanceCreateStore.getState().update({
+          pollError: `任务已${data.status === 'cancelled' ? '取消' : '过期'}`
+        })
+      }
+    }
+
+    window.api.seedance.onTaskUpdate(handleUpdate)
+    return () => {
+      window.api.seedance.removeTaskUpdateListener()
+    }
+  }, [stopPolling])
+
+  /** Download a remote video and turn it into a blob URL for the preview */
+  const downloadAndShowVideo = useCallback(
+    async (
+      taskId: string,
+      remoteUrl: string,
+      sessionBase?: Record<string, unknown>,
+      overrideDir?: string
+    ): Promise<void> => {
+      try {
+        const dir = overrideDir || useSeedanceCreateStore.getState().currentDir
+        const localPath = await window.api.file.downloadVideo({
+          url: remoteUrl,
+          destDir: dir,
+          filename: `Seedance_${taskId}`
+        })
+        const buffer = await window.api.file.readFileBuffer(localPath)
+        const blob = new Blob([buffer], { type: 'video/mp4' })
+        if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+        blobUrlRef.current = URL.createObjectURL(blob)
+        useSeedanceCreateStore.getState().update({ videoUrl: blobUrlRef.current })
+        if (sessionBase) {
+          localStorage.setItem(
+            STORAGE_LAST_SESSION_KEY,
+            JSON.stringify({ ...sessionBase, localPath, status: 'succeeded', timestamp: Date.now() })
+          )
+        }
+      } catch {
+        useSeedanceCreateStore.getState().update({ videoUrl: remoteUrl })
+      }
+    },
+    []
+  )
 
   const pollTask = useCallback(async (taskId: string) => {
     // Cancel any run still in flight so two loops never fight over the same store fields
-    if (pollTokenRef.current) pollTokenRef.current.cancelled = true
+    stopPolling()
     const token = { cancelled: false }
     pollTokenRef.current = token
     const cancelled = (): boolean => token.cancelled
@@ -51,32 +154,22 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         if (cancelled()) return
         const status = String(result.status || '')
         useSeedanceCreateStore.getState().update({ taskStatus: status })
+        updateSessionCache(taskId, { status })
 
         if (status === 'succeeded') {
-          justCreated.current = true
           const content = result.content as Record<string, unknown> | undefined
           const remoteUrl = String(content?.video_url || '')
           const { currentDir } = useSeedanceCreateStore.getState()
 
-          try {
-            const localPath = await window.api.file.downloadVideo({
-              url: remoteUrl,
-              destDir: currentDir,
-              filename: `Seedance_${taskId}`
-            })
-            if (cancelled()) return
-            const buffer = await window.api.file.readFileBuffer(localPath)
-            if (cancelled()) return
-            const blob = new Blob([buffer], { type: 'video/mp4' })
-            if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-            blobUrlRef.current = URL.createObjectURL(blob)
-            useSeedanceCreateStore.getState().update({ videoUrl: blobUrlRef.current })
-            localStorage.setItem(
-              STORAGE_LAST_SESSION_KEY,
-              JSON.stringify({ taskId, remoteUrl, localPath, dir: currentDir })
-            )
-          } catch {
-            useSeedanceCreateStore.getState().update({ videoUrl: remoteUrl })
+          // Save session data immediately (before slow download)
+          const sessionBase = { taskId, remoteUrl, dir: currentDir }
+          localStorage.setItem(
+            STORAGE_LAST_SESSION_KEY,
+            JSON.stringify({ ...sessionBase, localPath: '', status: 'succeeded', timestamp: Date.now() })
+          )
+
+          if (remoteUrl) {
+            await downloadAndShowVideo(taskId, remoteUrl, sessionBase, currentDir)
           }
           return
         } else if (status === 'failed') {
@@ -96,7 +189,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
         return
       }
     }
-  }, [])
+  }, [downloadAndShowVideo, stopPolling])
 
   const handleSubmit = async (): Promise<void> => {
     const s = useSeedanceCreateStore.getState()
@@ -156,8 +249,26 @@ export default function SeedanceCreatePage(): React.JSX.Element {
       }
 
       const result = (await window.api.seedance.createTask(params)) as { id: string }
-      useSeedanceCreateStore.getState().update({ createdId: result.id, taskStatus: 'queued' })
-      pollTask(result.id)
+      const id = result.id
+
+      useSeedanceCreateStore.getState().update({ createdId: id, taskStatus: 'queued' })
+
+      // --- Save comprehensive cache to localStorage immediately ---
+      updateSessionCache(id, {
+        status: 'queued',
+        remoteUrl: '',
+        localPath: '',
+        dir: currentDir,
+        storageDir: currentDir,
+        prompt: prompt.trim(),
+        ratio,
+        duration,
+        resolution,
+        generateAudio,
+        watermark
+      })
+
+      pollTask(id)
 
       try {
         const relativeFirstPath =
@@ -169,7 +280,7 @@ export default function SeedanceCreatePage(): React.JSX.Element {
             ? await window.api.path.relative(currentDir, lastFramePath)
             : null
         await window.api.taskParams.save({
-          task_id: result.id,
+          task_id: id,
           version: '1.5',
           prompt: prompt.trim(),
           ratio,
@@ -235,44 +346,56 @@ export default function SeedanceCreatePage(): React.JSX.Element {
     useSeedanceCreateStore.getState().clearKeyframes()
   }, [])
 
-  // Keyboard frame-stepping when paused
-  useEffect(() => {
-    const handler = (e: KeyboardEvent): void => {
-      const video = videoRef.current
-      if (!video || !video.paused) return
-      const step = 1 / 24
-      if (e.key === 'ArrowUp') {
-        e.preventDefault()
-        video.currentTime = Math.min(video.duration || 0, video.currentTime + step)
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault()
-        video.currentTime = Math.max(0, video.currentTime - step)
-      }
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
   const setImageData = useSeedanceCreateStore((s) => s.update)
   const setLastFrameData = useSeedanceCreateStore((s) => s.update)
+
+  const renderRight = (): React.JSX.Element => {
+    if (pollError && !videoUrl) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 min-h-[240px]">
+          <div className="rounded-md bg-destructive/10 p-4 text-sm text-destructive">
+            {pollError}
+          </div>
+          <button
+            onClick={() => useSeedanceCreateStore.getState().resetPanel()}
+            className="text-sm text-primary hover:underline"
+          >
+            重新开始
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex flex-col gap-4">
+        <VideoPlayer
+          videoUrl={videoUrl}
+          loading={!!createdId && !videoUrl}
+          loadingLabel={taskStatus === 'succeeded' ? '任务已完成，正在下载视频...' : '视频生成中...'}
+          taskId={createdId}
+          storageDir={currentDir}
+          videoRef={videoRef}
+          versionPrefix="Seedance_"
+          onKeyframeCapture={(dataUrl) => {
+            useSeedanceCreateStore.getState().addManualKeyframe(dataUrl)
+          }}
+        />
+        <KeyframeGrid
+          onSetFirstFrame={(dataUrl) => setImageData({ imageData: dataUrl })}
+          onSetLastFrame={(dataUrl) =>
+            setLastFrameData({ lastFrameData: dataUrl, useLastFrame: true })
+          }
+          onDeleteManualKeyframe={handleDeleteManualKeyframe}
+          onClearAllKeyframes={handleClearAllKeyframes}
+        />
+      </div>
+    )
+  }
 
   return (
     <TwoColumnLayout
       left={<CreateForm onSubmit={handleSubmit} />}
-      right={
-        <div className="flex flex-col gap-4">
-          <VideoPlayer videoRef={videoRef} />
-          <KeyframeGrid
-            onSetFirstFrame={(dataUrl) => setImageData({ imageData: dataUrl })}
-            onSetLastFrame={(dataUrl) =>
-              setLastFrameData({ lastFrameData: dataUrl, useLastFrame: true })
-            }
-            onDeleteManualKeyframe={handleDeleteManualKeyframe}
-            onClearAllKeyframes={handleClearAllKeyframes}
-          />
-        </div>
-      }
+      right={<div className="flex flex-col h-full overflow-y-auto">{renderRight()}</div>}
     />
   )
 }
