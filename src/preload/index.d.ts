@@ -5,6 +5,14 @@ interface SeedanceAPI {
   getTask: (id: string) => Promise<unknown>
   listTasks: (query: string) => Promise<unknown>
   deleteTask: (id: string) => Promise<unknown>
+  /** Listen for push-based task status updates from the main process */
+  onTaskUpdate: (callback: (data: { taskId: string; status: string; result: unknown }) => void) => void
+  /** Remove all task-update listeners */
+  removeTaskUpdateListener: () => void
+}
+
+interface SeedreamAPI {
+  generateImage: (params: unknown) => Promise<unknown>
 }
 
 interface DialogAPI {
@@ -15,11 +23,53 @@ interface DialogAPI {
 interface FileAPI {
   readBase64: (filePath: string) => Promise<string>
   getDefaultPath: () => Promise<string>
-  downloadVideo: (opts: { url: string; destDir: string; filename: string }) => Promise<string>
+  downloadVideo: (opts: { url: string; destDir: string; filename: string; taskId?: string }) => Promise<string>
   saveKeyframe: (opts: { base64Data: string; destDir: string; filename: string }) => Promise<string>
   readFileBuffer: (filePath: string) => Promise<ArrayBuffer>
-  readKeyframes: (opts: { dir: string; taskId: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
+  readKeyframes: (opts: { dir: string; taskId: string; prefix?: string }) => Promise<{ autoFrames: (string | null)[]; manualFrames: string[] }>
   deleteFile: (filePath: string) => Promise<void>
+  resolveImagePath: (opts: { storageDir: string; relativePath: string }) => Promise<string | null>
+}
+
+interface TaskParamsAPI {
+  save: (entry: {
+    task_id: string
+    version: string
+    prompt: string | null
+    ratio: string | null
+    duration: number | null
+    resolution: string | null
+    generate_audio: number
+    watermark: number
+    model: string | null
+    first_frame_path: string | null
+    last_frame_path: string | null
+    first_frame_data: string | null
+    last_frame_data: string | null
+    full_params: string | null
+  }) => Promise<void>
+  getByTaskId: (taskId: string) => Promise<{
+    id: number
+    task_id: string
+    version: string
+    prompt: string | null
+    ratio: string | null
+    duration: number | null
+    resolution: string | null
+    generate_audio: number
+    watermark: number
+    model: string | null
+    first_frame_path: string | null
+    last_frame_path: string | null
+    first_frame_data: string | null
+    last_frame_data: string | null
+    full_params: string | null
+    created_at: string
+  } | null>
+}
+
+interface PathAPI {
+  relative: (from: string, to: string) => Promise<string>
 }
 
 interface LogEntry {
@@ -53,11 +103,14 @@ interface LogQueryResult {
 
 interface LogsAPI {
   query: (options: LogQueryOptions) => Promise<LogQueryResult>
+  getTaskLog: (taskId: string) => Promise<LogEntry | null>
+  getById: (id: number) => Promise<LogEntry | null>
 }
 
 interface SettingsData {
   seedance15Key: string
   seedance20Key: string
+  seedream50Key: string
   userInfo: { name: string; email: string }
   theme: string
 }
@@ -73,10 +126,13 @@ declare global {
     api: {
       seedance: SeedanceAPI
       seedance2: SeedanceAPI
+      seedream: SeedreamAPI
       dialog: DialogAPI
       file: FileAPI
       logs: LogsAPI
       settings: SettingsAPI
+      taskParams: TaskParamsAPI
+      path: PathAPI
     }
   }
 }

@@ -7,7 +7,7 @@
 | CSS | Tailwind CSS | v4.3.0 |
 | 更新 | electron-updater | v6.8.3 |
 | 打包 | electron-builder | v26.8.1 |
-| 语言 | JavaScript (JSX) | - |
+| 语言 | TypeScript (tsx) | - |
 | 包管理 | pnpm | - |
 
 ## 关键依赖

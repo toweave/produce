@@ -1,0 +1,64 @@
+{
+  "expectations": [
+    {
+      "evidence": "文件 profile-store.ts 存在，使用 create 从 zustand 创建 store，管理 username、email、gender、avatarDataUrl 等表单状态，并提供 setUsername、setEmail、setGender、setAvatar、validate、save、reset 等 action。",
+      "passed": true,
+      "text": "创建了 zustand store 管理表单状态（如 stores/profile-store.ts）"
+    },
+    {
+      "evidence": "profile-edit.tsx 从 @/components/ui/input 导入 Input，从 @/components/ui/select 导入 Select/SelectContent/SelectItem/SelectTrigger/SelectValue，从 @/components/ui/button 导入 Button，同时使用了 Card、Label、Avatar、Separator 等 shadcn 组件。",
+      "passed": true,
+      "text": "使用了 shadcn 的 Input, Select, Button 等组件"
+    },
+    {
+      "evidence": "ProfileEditPage 组件定义中不接收任何 props（export default function ProfileEditPage(): React.JSX.Element），所有表单数据通过 useProfileStore() 直接从 store 读取，props 数量为 0，远低于 10 的限制。",
+      "passed": true,
+      "text": "组件 props 数量不超过 10 个"
+    },
+    {
+      "evidence": "profile-edit.tsx 中完全没有导入或使用 cn() 函数。所有 className 均为直接拼接的字符串常量（如 'mx-auto max-w-2xl p-6'、'flex flex-col items-center gap-4'），未通过 cn() 进行合并。",
+      "passed": false,
+      "text": "使用 cn() 函数合并 Tailwind 类名"
+    },
+    {
+      "evidence": "所有样式均通过 className 属性使用 Tailwind utility classes（如 max-w-2xl、space-y-6、size-24、text-xs 等），不存在任何自定义 CSS 文件或内联 style 对象。",
+      "passed": true,
+      "text": "所有样式使用 Tailwind utility classes，没有自定义 CSS 文件"
+    },
+    {
+      "evidence": "使用了多个语义化 Tailwind 颜色类：text-muted-foreground（头像提示文字）、text-destructive（校验错误提示）、bg-primary/text-primary-foreground（相机按钮）、ring-background、hover:text-foreground、hover:bg-primary/80。",
+      "passed": true,
+      "text": "使用了语义化颜色名称（如 bg-card, text-muted-foreground, border-border）"
+    },
+    {
+      "evidence": "profile-edit.tsx 第 11 行从 lucide-react 导入 UserIcon、CameraIcon、Loader2Icon，并分别用于 Avatar 占位图标、相机按钮和保存加载状态。",
+      "passed": true,
+      "text": "使用了 lucide-react 图标"
+    },
+    {
+      "evidence": "组件通过 useProfileStore() 读取字段值，更新时直接调用 store action：setUsername(e.target.value)、setEmail(e.target.value)、setGender(val)、setAvatar(file)、clearAvatar()，未使用任何 props 回调。",
+      "passed": true,
+      "text": "表单字段值通过 store action 更新而非 props 回调"
+    }
+  ],
+  "summary": {
+    "passed": 7,
+    "failed": 1,
+    "total": 8,
+    "pass_rate": 0.875
+  },
+  "claims": [
+    "Store 文件命名为 profile-store.ts，符合 zustand 命名惯例",
+    "Store 使用 create<ProfileState>()(...) 类型安全的泛型写法",
+    "组件为默认导出的纯函数组件 ProfileEditPage，无 props 依赖",
+    "表单使用 shadcn Card 布局（CardHeader/CardTitle/CardDescription/CardContent）组织页面结构",
+    "头像上传功能使用 FileReader.readAsDataURL 转换为 data URL 存储",
+    "表单校验在 store 内部实现（validate 方法），校验用户名非空/最少 2 字符、邮箱格式",
+    "save action 使用 setTimeout 模拟 1.5 秒 API 请求延迟",
+    "保存按钮在提交中显示 Loader2Icon 旋转动画，同时禁用交互",
+    "使用 ref 引用隐藏的 file input 实现头像选择触发",
+    "性别选项为 male/female/other 三个枚举值",
+    "使用 Separator 组件分隔头像区域和表单字段区域",
+    "Avatar 组件未使用标准 shadcn 方式（添加了非标准 size=\"lg\" prop），可能产生运行时问题"
+  ]
+}

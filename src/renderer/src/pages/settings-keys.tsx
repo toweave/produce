@@ -4,8 +4,10 @@ import { KeyIcon, SaveIcon, EyeIcon, EyeOffIcon, Loader2Icon, CheckIcon } from '
 export default function SettingsKeysPage(): React.JSX.Element {
   const [seedance15Key, setSeedance15Key] = useState('')
   const [seedance20Key, setSeedance20Key] = useState('')
+  const [seedream50Key, setSeedream50Key] = useState('')
   const [show15, setShow15] = useState(false)
   const [show20, setShow20] = useState(false)
+  const [show50, setShow50] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [userName, setUserName] = useState('')
@@ -15,6 +17,7 @@ export default function SettingsKeysPage(): React.JSX.Element {
     window.api.settings.get().then((settings) => {
       setSeedance15Key(settings.seedance15Key || '')
       setSeedance20Key(settings.seedance20Key || '')
+      setSeedream50Key(settings.seedream50Key || '')
       setUserName(settings.userInfo?.name || '')
       setUserEmail(settings.userInfo?.email || '')
     })
@@ -27,6 +30,7 @@ export default function SettingsKeysPage(): React.JSX.Element {
       await window.api.settings.set({
         seedance15Key,
         seedance20Key,
+        seedream50Key,
         userInfo: { name: userName, email: userEmail }
       })
       setSaved(true)
@@ -97,6 +101,31 @@ export default function SettingsKeysPage(): React.JSX.Element {
         </div>
         <p className="text-xs text-muted-foreground mt-1.5">
           用于调用 doubao-seedance-2-0-pro 模型
+        </p>
+      </div>
+
+      {/* Seedream 5.0 Key */}
+      <div className="rounded-lg border border-border bg-card p-4 mb-4">
+        <label className="block text-sm font-medium mb-1.5">Seedream-5.0 API 密钥</label>
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <input
+              type={show50 ? 'text' : 'password'}
+              value={seedream50Key}
+              onChange={(e) => setSeedream50Key(e.target.value)}
+              placeholder="输入 Seedream-5.0 的 API 密钥"
+              className="w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm font-mono ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <button
+              onClick={() => setShow50(!show50)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            >
+              {show50 ? <EyeOffIcon className="h-4 w-4" /> : <EyeIcon className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground mt-1.5">
+          用于调用 doubao-seedream-5-0-lite 模型
         </p>
       </div>
 
