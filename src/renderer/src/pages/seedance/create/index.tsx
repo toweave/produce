@@ -16,6 +16,8 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const justCreated = useRef(false)
   const blobUrlRef = useRef<string | null>(null)
+  // Cancellation token for the in-flight poll loop (see pollTask)
+  const pollTokenRef = useRef<{ cancelled: boolean } | null>(null)
 
   // Store selectors
   const currentDir = useSeedanceCreateStore((s) => s.currentDir)
@@ -26,25 +28,31 @@ export default function SeedanceCreatePage(): React.JSX.Element {
   useSessionRestore(currentDir)
   useAutoCapture({ videoRef, justCreated })
 
-  // Cleanup blob URL on unmount
+  // Stop polling and release the blob URL on unmount
   useEffect(() => {
     return () => {
+      if (pollTokenRef.current) pollTokenRef.current.cancelled = true
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
     }
   }, [])
 
   const pollTask = useCallback(async (taskId: string) => {
-    let stopped = false
-    while (!stopped) {
+    // Cancel any run still in flight so two loops never fight over the same store fields
+    if (pollTokenRef.current) pollTokenRef.current.cancelled = true
+    const token = { cancelled: false }
+    pollTokenRef.current = token
+    const cancelled = (): boolean => token.cancelled
+
+    while (!cancelled()) {
       await new Promise((r) => setTimeout(r, 5000))
-      if (stopped) break
+      if (cancelled()) return
       try {
         const result = (await window.api.seedance.getTask(taskId)) as Record<string, unknown>
+        if (cancelled()) return
         const status = String(result.status || '')
         useSeedanceCreateStore.getState().update({ taskStatus: status })
 
         if (status === 'succeeded') {
-          stopped = true
           justCreated.current = true
           const content = result.content as Record<string, unknown> | undefined
           const remoteUrl = String(content?.video_url || '')
@@ -54,9 +62,11 @@ export default function SeedanceCreatePage(): React.JSX.Element {
             const localPath = await window.api.file.downloadVideo({
               url: remoteUrl,
               destDir: currentDir,
-              filename: `Seedance_${taskId}_${Date.now()}`
+              filename: `Seedance_${taskId}`
             })
+            if (cancelled()) return
             const buffer = await window.api.file.readFileBuffer(localPath)
+            if (cancelled()) return
             const blob = new Blob([buffer], { type: 'video/mp4' })
             if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
             blobUrlRef.current = URL.createObjectURL(blob)
@@ -68,21 +78,22 @@ export default function SeedanceCreatePage(): React.JSX.Element {
           } catch {
             useSeedanceCreateStore.getState().update({ videoUrl: remoteUrl })
           }
+          return
         } else if (status === 'failed') {
-          stopped = true
           const errObj = result.error as Record<string, unknown> | undefined
           useSeedanceCreateStore.getState().update({
             pollError: errObj?.message ? String(errObj.message) : '视频生成失败'
           })
+          return
         } else if (status === 'cancelled' || status === 'expired') {
-          stopped = true
           useSeedanceCreateStore.getState().update({
             pollError: `任务已${status === 'cancelled' ? '取消' : '过期'}`
           })
+          return
         }
       } catch {
         useSeedanceCreateStore.getState().update({ pollError: '查询任务状态失败' })
-        stopped = true
+        return
       }
     }
   }, [])

@@ -1,6 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeftIcon, Loader2Icon, Trash2Icon, FileTextIcon, XIcon } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog'
 import { handleApiError } from '@/lib/api-errors'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import VideoPlayer from '@/components/video-player'
@@ -85,7 +96,7 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
       if (result.status === 'succeeded' && result.content?.video_url) {
         const remoteUrl = result.content.video_url
         try {
-          const filename = `Seedance_${id}_detail_${Date.now()}`
+          const filename = `Seedance_${id}`
           const localPath = await window.api.file.downloadVideo({
             url: remoteUrl,
             destDir: storageDir,
@@ -138,7 +149,9 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
     try {
       await window.api.seedance.deleteTask(id)
       navigate('/seedance/tasks')
-    } catch {
+    } catch (err) {
+      const { message } = handleApiError(err, '1.5', '删除任务失败')
+      setError(message)
       setDeleting(false)
     }
   }
@@ -262,6 +275,12 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
                 <p className="text-sm font-medium text-destructive">错误：{task.error?.code}</p>
                 <p className="text-sm text-destructive/80 mt-1">{task.error?.message}</p>
               </div>
+            ) : task.status === 'cancelled' || task.status === 'expired' ? (
+              <div className="rounded-lg bg-muted/30 p-8 text-center text-muted-foreground mb-4">
+                <span className="text-sm">
+                  任务已{task.status === 'cancelled' ? '取消' : '过期'}
+                </span>
+              </div>
             ) : (
               <div className="rounded-lg bg-muted/30 p-8 text-center text-muted-foreground flex flex-col items-center gap-3">
                 <Loader2Icon className="h-6 w-6 animate-spin" />
@@ -309,14 +328,29 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
             <div className="flex items-center">
               <StatusBadge status={task.status} />
               {['queued', 'succeeded', 'failed', 'expired'].includes(task.status) && (
-                <button
-                  onClick={handleDelete}
-                  disabled={deleting}
-                  className="ml-4 inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
-                >
-                  <Trash2Icon className="h-4 w-4" />
-                  {deleting ? '删除中...' : '删除'}
-                </button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      disabled={deleting}
+                      className="ml-4 inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent disabled:opacity-50"
+                    >
+                      <Trash2Icon className="h-4 w-4" />
+                      {deleting ? '删除中...' : '删除'}
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>删除这个任务？</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        将从远程永久删除任务 {task.id}，此操作不可撤销。
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>取消</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDelete}>删除</AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               )}
             </div>
 
@@ -376,8 +410,14 @@ export default function SeedanceTaskDetailPage(): React.JSX.Element {
 function RefImage({ src, label, onClick }: { src: string; label: string; onClick: () => void }) {
   return (
     <div className="relative group cursor-pointer" onClick={onClick}>
-      <img src={src} alt={label} className="h-24 w-auto rounded border border-border object-cover" />
-      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">{label}</span>
+      <img
+        src={src}
+        alt={label}
+        className="h-24 w-auto rounded border border-border object-cover"
+      />
+      <span className="absolute bottom-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
+        {label}
+      </span>
       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
         <span className="text-xs text-white">点击放大</span>
       </div>
@@ -387,11 +427,22 @@ function RefImage({ src, label, onClick }: { src: string; label: string; onClick
 
 function ImageZoomModal({ src, onClose }: { src: string; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer" onClick={onClose}>
-      <button onClick={onClose} className="absolute top-4 right-4 rounded-full bg-black/60 p-2 text-white hover:bg-black/80">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 cursor-pointer"
+      onClick={onClose}
+    >
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 rounded-full bg-black/60 p-2 text-white hover:bg-black/80"
+      >
         <XIcon className="h-5 w-5" />
       </button>
-      <img src={src} alt="参考图片" className="max-w-[90vw] max-h-[90vh] object-contain" onClick={(e) => e.stopPropagation()} />
+      <img
+        src={src}
+        alt="参考图片"
+        className="max-w-[90vw] max-h-[90vh] object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
     </div>
   )
 }

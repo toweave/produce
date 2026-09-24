@@ -77,7 +77,7 @@ export function useSessionRestore(currentDir: string): void {
             try {
               const localPath = await window.api.file.downloadVideo({
                 url: remoteUrl, destDir: currentDir,
-                filename: `Seedance_${taskId}_restore_${Date.now()}`
+                filename: `Seedance_${taskId}`
               })
               const buffer = await window.api.file.readFileBuffer(localPath)
               const blob = new Blob([buffer], { type: 'video/mp4' })

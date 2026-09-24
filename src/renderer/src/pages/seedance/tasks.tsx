@@ -1,7 +1,27 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ListTodoIcon, RefreshCwIcon, Trash2Icon, EyeIcon, Loader2Icon, SettingsIcon, ChevronRightIcon, FileTextIcon } from 'lucide-react'
+import {
+  ListTodoIcon,
+  RefreshCwIcon,
+  Trash2Icon,
+  EyeIcon,
+  Loader2Icon,
+  SettingsIcon,
+  ChevronRightIcon,
+  FileTextIcon
+} from 'lucide-react'
 import { handleApiError } from '@/lib/api-errors'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog'
 import { TwoColumnLayout } from '@/components/two-column-layout'
 import VideoPlayer from '@/components/video-player'
 import { STATUS_OPTIONS, STATUS_LABEL } from './constants'
@@ -65,8 +85,9 @@ export default function SeedanceTasksPage(): React.JSX.Element {
       await window.api.seedance.deleteTask(id)
       if (selectedId === id) setSelectedId(null)
       fetchTasks()
-    } catch {
-      /* fail silently */
+    } catch (err) {
+      const { message } = handleApiError(err, '1.5', '删除任务失败')
+      setError(message)
     }
   }
 
@@ -203,16 +224,32 @@ export default function SeedanceTasksPage(): React.JSX.Element {
                             <EyeIcon className="h-4 w-4" />
                           </button>
                           {['queued', 'succeeded', 'failed', 'expired'].includes(task.status) && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleDelete(task.id)
-                              }}
-                              className="rounded p-1 hover:bg-accent text-destructive"
-                              title="删除"
-                            >
-                              <Trash2Icon className="h-4 w-4" />
-                            </button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <button
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="rounded p-1 hover:bg-accent text-destructive"
+                                  title="删除"
+                                  aria-label="删除任务"
+                                >
+                                  <Trash2Icon className="h-4 w-4" />
+                                </button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>删除这个任务？</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    将从远程永久删除任务 {task.id}，此操作不可撤销。
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>取消</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDelete(task.id)}>
+                                    删除
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </div>
                       </td>
@@ -265,76 +302,105 @@ function useTaskPreview() {
   const blobUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    window.api.file.getDefaultPath().then((dir) => setStorageDir(dir)).catch(() => {})
+    window.api.file
+      .getDefaultPath()
+      .then((dir) => setStorageDir(dir))
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
-    return () => { if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current) }
+    return () => {
+      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+    }
   }, [])
 
-  const selectTask = useCallback(async (task: TaskItem | null) => {
-    if (!task) {
-      setSelectedId(null)
+  const selectTask = useCallback(
+    async (task: TaskItem | null) => {
+      if (!task) {
+        setSelectedId(null)
+        setSelectedTask(null)
+        setVideoUrl('')
+        return
+      }
+      setSelectedId(task.id)
       setSelectedTask(null)
+      setSelectedLog(null)
+      setTaskParams(null)
+      setFirstFrameDisplay(null)
+      setLastFrameDisplay(null)
       setVideoUrl('')
-      return
-    }
-    setSelectedId(task.id)
-    setSelectedTask(null)
-    setSelectedLog(null)
-    setTaskParams(null)
-    setFirstFrameDisplay(null)
-    setLastFrameDisplay(null)
-    setVideoUrl('')
-    setKeyframes([])
-    setPreviewLoading(true)
-
-    try {
-      const detail = await window.api.seedance.getTask(task.id) as TaskDetail
-
-      let logEntry: Record<string, unknown> | null = null
-      try { logEntry = await window.api.logs.getTaskLog(task.id) as Record<string, unknown> | null } catch { /* best-effort */ }
-
-      setSelectedTask(detail)
-      setSelectedLog(logEntry)
+      setKeyframes([])
+      setPreviewLoading(true)
 
       try {
-        const params = await window.api.taskParams.getByTaskId(task.id) as Record<string, unknown> | null
-        setTaskParams(params)
-        if (params) {
-          if (params.first_frame_path && storageDir) {
-            const data = await window.api.file.resolveImagePath({ storageDir, relativePath: params.first_frame_path as string })
-            setFirstFrameDisplay(data || (params.first_frame_data as string) || null)
-          } else {
-            setFirstFrameDisplay((params.first_frame_data as string) || null)
-          }
-          if (params.last_frame_path && storageDir) {
-            const data = await window.api.file.resolveImagePath({ storageDir, relativePath: params.last_frame_path as string })
-            setLastFrameDisplay(data || (params.last_frame_data as string) || null)
-          } else {
-            setLastFrameDisplay((params.last_frame_data as string) || null)
-          }
-        }
-      } catch { /* task params may not exist yet */ }
+        const detail = (await window.api.seedance.getTask(task.id)) as TaskDetail
 
-      if (detail.status === 'succeeded' && detail.content?.video_url) {
-        const remoteUrl = detail.content.video_url
+        let logEntry: Record<string, unknown> | null = null
         try {
-          const filename = `Seedance_${task.id}_preview_${Date.now()}`
-          const localPath = await window.api.file.downloadVideo({ url: remoteUrl, destDir: storageDir, filename })
-          const buffer = await window.api.file.readFileBuffer(localPath)
-          const blob = new Blob([buffer], { type: 'video/mp4' })
-          if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
-          blobUrlRef.current = URL.createObjectURL(blob)
-          setVideoUrl(blobUrlRef.current)
+          logEntry = (await window.api.logs.getTaskLog(task.id)) as Record<string, unknown> | null
         } catch {
-          setVideoUrl(remoteUrl)
+          /* best-effort */
         }
+
+        setSelectedTask(detail)
+        setSelectedLog(logEntry)
+
+        try {
+          const params = (await window.api.taskParams.getByTaskId(task.id)) as Record<
+            string,
+            unknown
+          > | null
+          setTaskParams(params)
+          if (params) {
+            if (params.first_frame_path && storageDir) {
+              const data = await window.api.file.resolveImagePath({
+                storageDir,
+                relativePath: params.first_frame_path as string
+              })
+              setFirstFrameDisplay(data || (params.first_frame_data as string) || null)
+            } else {
+              setFirstFrameDisplay((params.first_frame_data as string) || null)
+            }
+            if (params.last_frame_path && storageDir) {
+              const data = await window.api.file.resolveImagePath({
+                storageDir,
+                relativePath: params.last_frame_path as string
+              })
+              setLastFrameDisplay(data || (params.last_frame_data as string) || null)
+            } else {
+              setLastFrameDisplay((params.last_frame_data as string) || null)
+            }
+          }
+        } catch {
+          /* task params may not exist yet */
+        }
+
+        if (detail.status === 'succeeded' && detail.content?.video_url) {
+          const remoteUrl = detail.content.video_url
+          try {
+            const filename = `Seedance_${task.id}`
+            const localPath = await window.api.file.downloadVideo({
+              url: remoteUrl,
+              destDir: storageDir,
+              filename
+            })
+            const buffer = await window.api.file.readFileBuffer(localPath)
+            const blob = new Blob([buffer], { type: 'video/mp4' })
+            if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
+            blobUrlRef.current = URL.createObjectURL(blob)
+            setVideoUrl(blobUrlRef.current)
+          } catch {
+            setVideoUrl(remoteUrl)
+          }
+        }
+      } catch {
+        /* preview load failed silently */
+      } finally {
+        setPreviewLoading(false)
       }
-    } catch { /* preview load failed silently */ } finally {
-      setPreviewLoading(false)
-    }
-  }, [storageDir])
+    },
+    [storageDir]
+  )
 
   const getPrompt = (): string => {
     if (taskParams?.prompt) return taskParams.prompt as string
@@ -345,7 +411,9 @@ function useTaskPreview() {
         const content = parsed.content || []
         const textItem = content.find((c: { type: string; text?: string }) => c.type === 'text')
         return textItem?.text || ''
-      } catch { return '' }
+      } catch {
+        return ''
+      }
     }
     return ''
   }
@@ -358,7 +426,9 @@ function useTaskPreview() {
         destDir: storageDir,
         filename: `Seedance_${selectedTask.id}_${Date.now()}`
       })
-    } catch { /* fail silently */ }
+    } catch {
+      /* fail silently */
+    }
   }, [selectedTask, storageDir])
 
   const handleKeyframeCapture = useCallback((dataUrl: string) => {
@@ -393,7 +463,12 @@ function useTaskPreview() {
               <div className="border-t border-border p-2">
                 <div className="flex gap-1.5 overflow-x-auto">
                   {keyframes.map((dataUrl, i) => (
-                    <img key={i} src={dataUrl} alt={`关键帧 ${i + 1}`} className="h-14 w-auto rounded border border-border flex-shrink-0" />
+                    <img
+                      key={i}
+                      src={dataUrl}
+                      alt={`关键帧 ${i + 1}`}
+                      className="h-14 w-auto rounded border border-border flex-shrink-0"
+                    />
                   ))}
                 </div>
               </div>
@@ -402,12 +477,16 @@ function useTaskPreview() {
         ) : selectedTask?.status === 'failed' ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-2 p-6">
             <StatusBadge status={selectedTask.status} />
-            <p className="text-sm text-destructive text-center">{selectedTask.error?.message || '任务执行失败'}</p>
+            <p className="text-sm text-destructive text-center">
+              {selectedTask.error?.message || '任务执行失败'}
+            </p>
           </div>
         ) : ['queued', 'running'].includes(selectedTask?.status || '') ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2Icon className="h-6 w-6 animate-spin" />
-            <span className="text-sm">{selectedTask?.status === 'queued' ? '排队中...' : '正在生成...'}</span>
+            <span className="text-sm">
+              {selectedTask?.status === 'queued' ? '排队中...' : '正在生成...'}
+            </span>
           </div>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-6">
@@ -442,14 +521,26 @@ function useTaskPreview() {
                 <div className="flex gap-2">
                   {firstFrameDisplay && (
                     <div className="relative group">
-                      <img src={firstFrameDisplay} alt="首帧" className="h-16 w-auto rounded border border-border object-cover" />
-                      <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">首帧</span>
+                      <img
+                        src={firstFrameDisplay}
+                        alt="首帧"
+                        className="h-16 w-auto rounded border border-border object-cover"
+                      />
+                      <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                        首帧
+                      </span>
                     </div>
                   )}
                   {lastFrameDisplay && (
                     <div className="relative group">
-                      <img src={lastFrameDisplay} alt="尾帧" className="h-16 w-auto rounded border border-border object-cover" />
-                      <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">尾帧</span>
+                      <img
+                        src={lastFrameDisplay}
+                        alt="尾帧"
+                        className="h-16 w-auto rounded border border-border object-cover"
+                      />
+                      <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 py-0.5 text-[10px] text-white">
+                        尾帧
+                      </span>
                     </div>
                   )}
                 </div>
@@ -458,18 +549,42 @@ function useTaskPreview() {
 
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 pt-2 border-t border-border">
               <InfoRow label="任务 ID" value={selectedTask?.id || ''} mono />
-              <InfoRow label="状态" value={STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status || ''} />
+              <InfoRow
+                label="状态"
+                value={STATUS_LABEL[selectedTask?.status || ''] || selectedTask?.status || ''}
+              />
               <InfoRow label="模型" value={selectedTask?.model || ''} />
               <InfoRow label="宽高比" value={selectedTask?.ratio || '-'} />
               <InfoRow label="分辨率" value={selectedTask?.resolution || '-'} />
-              <InfoRow label="时长" value={selectedTask?.duration ? `${selectedTask.duration} 秒` : '-'} />
-              <InfoRow label="音频" value={selectedTask?.generate_audio === undefined ? '-' : selectedTask.generate_audio ? '有声' : '无声'} />
-              <InfoRow label="创建时间" value={selectedTask?.created_at ? new Date(selectedTask.created_at * 1000).toLocaleString('zh-CN') : '-'} />
+              <InfoRow
+                label="时长"
+                value={selectedTask?.duration ? `${selectedTask.duration} 秒` : '-'}
+              />
+              <InfoRow
+                label="音频"
+                value={
+                  selectedTask?.generate_audio === undefined
+                    ? '-'
+                    : selectedTask.generate_audio
+                      ? '有声'
+                      : '无声'
+                }
+              />
+              <InfoRow
+                label="创建时间"
+                value={
+                  selectedTask?.created_at
+                    ? new Date(selectedTask.created_at * 1000).toLocaleString('zh-CN')
+                    : '-'
+                }
+              />
             </div>
 
             {selectedTask?.status === 'failed' && selectedTask?.error && (
               <div className="rounded-md bg-destructive/10 p-2.5">
-                <p className="text-xs font-medium text-destructive">错误：{selectedTask.error.code}</p>
+                <p className="text-xs font-medium text-destructive">
+                  错误：{selectedTask.error.code}
+                </p>
                 <p className="text-xs text-destructive/80 mt-0.5">{selectedTask.error.message}</p>
               </div>
             )}

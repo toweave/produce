@@ -142,6 +142,9 @@ export function VideoPlayer({ videoRef }: VideoPlayerProps): React.JSX.Element {
             controls={false}
           />
 
+          {/* Hidden canvas for frame capture — required by handleCaptureKeyframe */}
+          <canvas ref={canvasRef} className="hidden" />
+
           {!isPlaying && (
             <button
               onClick={handlePlayPause}

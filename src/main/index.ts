@@ -1,7 +1,7 @@
 import 'dotenv/config'
 import { app, shell, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join, relative, resolve } from 'path'
-import { readFile, writeFile, mkdir, unlink, access } from 'fs/promises'
+import { readFile, writeFile, mkdir, unlink, access, readdir } from 'fs/promises'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { initDatabase, insertLog, queryLogs, queryLogByTaskId, insertTaskParams, getTaskParamsByTaskId } from './database'
@@ -315,15 +315,29 @@ app.whenReady().then(() => {
         autoFrames.push(null)
       }
     }
+    // Manual keyframes are written as `..._manual_<index>` by the create page and
+    // as `..._manual_<timestamp>` by the preview/detail player. Scan the directory
+    // and order by the numeric suffix, so neither naming scheme — nor an index
+    // removed by a delete — hides the remaining frames.
     const manualFrames: string[] = []
-    for (let i = 0; ; i++) {
-      const path = join(dir, `Seedance_${taskId}_manual_${i}.png`)
-      try {
-        const buffer = await readFile(path)
-        manualFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
-      } catch {
-        break
+    const manualPrefix = `Seedance_${taskId}_manual_`
+    try {
+      const entries = await readdir(dir)
+      const ordered = entries
+        .filter((name) => name.startsWith(manualPrefix) && name.endsWith('.png'))
+        .map((name) => ({ name, order: Number(name.slice(manualPrefix.length, -4)) }))
+        .filter((entry) => Number.isFinite(entry.order))
+        .sort((a, b) => a.order - b.order)
+      for (const entry of ordered) {
+        try {
+          const buffer = await readFile(join(dir, entry.name))
+          manualFrames.push(`data:image/png;base64,${buffer.toString('base64')}`)
+        } catch {
+          // Unreadable file — skip it rather than dropping the rest
+        }
       }
+    } catch {
+      // Directory does not exist yet — no manual keyframes
     }
     return { autoFrames, manualFrames }
   })

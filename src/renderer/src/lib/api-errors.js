@@ -4,8 +4,15 @@ export function isApiKeyMissing(error) {
   return msg.includes('API key is not configured')
 }
 
+const PRODUCT_NAME = new Map([
+  ['1.5', 'Seedance-1.5'],
+  ['2.0', 'Seedance-2.0'],
+  ['5.0', 'Seedream-5.0']
+])
+
 export function getApiKeyErrorMessage(version) {
-  return `Seedance-${version} API 密钥未配置，请先在设置页面配置密钥后再使用`
+  const product = PRODUCT_NAME.get(version) || `Seedance-${version}`
+  return `${product} API 密钥未配置，请先在设置页面配置密钥后再使用`
 }
 
 /**
